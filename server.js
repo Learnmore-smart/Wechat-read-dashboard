@@ -13,7 +13,13 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Redirect /wechat-read-stats to /wechat-read-stats/ to ensure relative imports resolve correctly
+app.get('/wechat-read-stats', (req, res) => {
+  res.redirect(301, '/wechat-read-stats/');
+});
+
 // Serve static assets from public folder
+app.use('/wechat-read-stats', express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Retrieve WeRead API key from environment
@@ -24,7 +30,7 @@ if (!WEREAD_API_KEY) {
 }
 
 // Proxy endpoint to handle CORS and auth
-app.post('/api/weread', async (req, res) => {
+app.post(['/api/weread', '/wechat-read-stats/api/weread'], async (req, res) => {
   try {
     const { api_name, user_api_key, ...restParams } = req.body;
     

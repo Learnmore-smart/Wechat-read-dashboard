@@ -1,6 +1,9 @@
 // WeChat Reading Dashboard — Frontend Application v3.0
 // Premium, sleek loading experience with top progress bar + settings panel + themes
 
+// Base path detection for subpath hosting (e.g. /wechat-read-stats/)
+const basePath = window.location.pathname.startsWith('/wechat-read-stats') ? '/wechat-read-stats' : '';
+
 // ========================== ENCRYPTION & DECRYPTION SYSTEM ==========================
 const KeyCrypt = {
   encrypt(text) {
@@ -219,7 +222,7 @@ async function updateLanguage(lang) {
   // If we haven't loaded the translations for this language yet, fetch them
   if (!i18n[lang]) {
     try {
-      const response = await fetch(`/locales/${lang}.json`);
+      const response = await fetch(`${basePath}/locales/${lang}.json`);
       if (!response.ok) throw new Error(`Failed to load translations for ${lang}`);
       i18n[lang] = await response.json();
     } catch (error) {
@@ -615,7 +618,7 @@ async function callApi(apiName, params = {}) {
   }
 
   try {
-    const response = await fetch('/api/weread', {
+    const response = await fetch(`${basePath}/api/weread`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody)
