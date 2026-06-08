@@ -13,6 +13,31 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Redirect direct traffic (not from rateministere.com or localhost) to the official portfolio path
+app.use((req, res, next) => {
+  const host = req.headers.host || '';
+  const forwardedHost = req.headers['x-forwarded-host'] || '';
+
+  // Allow local development
+  if (host.includes('localhost') || host.includes('127.0.0.1')) {
+    return next();
+  }
+
+  const isOfficialHost = host.includes('rateministere.com') || forwardedHost.includes('rateministere.com');
+  if (!isOfficialHost) {
+    let subpath = req.url;
+    if (subpath.startsWith('/wechat-read-stats')) {
+      subpath = subpath.substring('/wechat-read-stats'.length);
+    }
+    if (!subpath.startsWith('/')) {
+      subpath = '/' + subpath;
+    }
+    return res.redirect(301, `https://www.rateministere.com/wechat-read-stats${subpath}`);
+  }
+
+  next();
+});
+
 // Redirect /wechat-read-stats to /wechat-read-stats/ to ensure relative imports resolve correctly
 app.get('/wechat-read-stats', (req, res, next) => {
   if (req.path === '/wechat-read-stats') {
