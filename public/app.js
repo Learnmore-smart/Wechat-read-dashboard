@@ -1,5 +1,203 @@
-// WeChat Reading Dashboard — Frontend Application v2.0
-// Premium, sleek loading experience with top progress bar + skeletons
+// WeChat Reading Dashboard — Frontend Application v3.0
+// Premium, sleek loading experience with top progress bar + settings panel + themes
+
+// ========================== ENCRYPTION & DECRYPTION SYSTEM ==========================
+const KeyCrypt = {
+  encrypt(text) {
+    if (!text) return '';
+    const salt = "weread_secret_salt_key_2026";
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+      const charCode = text.charCodeAt(i) ^ salt.charCodeAt(i % salt.length);
+      result += String.fromCharCode(charCode);
+    }
+    return btoa(encodeURIComponent(result));
+  },
+  decrypt(ciphertext) {
+    if (!ciphertext) return '';
+    try {
+      const decoded = decodeURIComponent(atob(ciphertext));
+      const salt = "weread_secret_salt_key_2026";
+      let result = '';
+      for (let i = 0; i < decoded.length; i++) {
+        const charCode = decoded.charCodeAt(i) ^ salt.charCodeAt(i % salt.length);
+        result += String.fromCharCode(charCode);
+      }
+      return result;
+    } catch (e) {
+      return '';
+    }
+  }
+};
+
+// ========================== SYSTEM SETTINGS & THEMES ==========================
+const settingsState = {
+  appearance: 'auto', // 'auto', 'light', 'dark'
+  theme: 'warm', // 'warm', 'sepia', 'navy', 'sage', 'dark', 'cyber'
+  apiKey: ''
+};
+
+function initSettings() {
+  // Load settings from localStorage
+  settingsState.appearance = localStorage.getItem('weread_appearance') || 'auto';
+  settingsState.theme = localStorage.getItem('weread_theme') || 'warm';
+  
+  const storedKey = localStorage.getItem('weread_api_key');
+  settingsState.apiKey = storedKey ? KeyCrypt.decrypt(storedKey) : '';
+
+  // Apply theme on load
+  applyTheme(settingsState.appearance, settingsState.theme);
+
+  // Setup DOM Event Listeners for Settings Modal
+  const openBtn = document.getElementById('open-settings-btn');
+  const closeBtn = document.getElementById('close-settings-btn');
+  const cancelBtn = document.getElementById('cancel-settings-btn');
+  const saveBtn = document.getElementById('save-settings-btn');
+  const togglePwdBtn = document.getElementById('toggle-api-key-visibility');
+  const apiKeyInput = document.getElementById('settings-api-key-input');
+  const modal = document.getElementById('settings-modal');
+
+  if (openBtn && modal) {
+    openBtn.addEventListener('click', () => {
+      // Load current settings into inputs
+      apiKeyInput.value = settingsState.apiKey;
+      
+      // Select appropriate appearance button
+      document.querySelectorAll('.mode-select-btn').forEach(btn => {
+        if (btn.getAttribute('data-appearance') === settingsState.appearance) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      // Select appropriate theme button
+      document.querySelectorAll('.theme-option-btn').forEach(btn => {
+        if (btn.getAttribute('data-theme') === settingsState.theme) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      modal.classList.add('active');
+    });
+  }
+
+  const hideSettings = () => {
+    if (modal) modal.classList.remove('active');
+    if (apiKeyInput) apiKeyInput.type = 'password';
+    const eyeIcon = togglePwdBtn.querySelector('i');
+    if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye');
+    lucide.createIcons();
+  };
+
+  if (closeBtn) closeBtn.addEventListener('click', hideSettings);
+  if (cancelBtn) cancelBtn.addEventListener('click', hideSettings);
+
+  // Password toggle visibility
+  if (togglePwdBtn && apiKeyInput) {
+    togglePwdBtn.addEventListener('click', () => {
+      const eyeIcon = togglePwdBtn.querySelector('i');
+      if (apiKeyInput.type === 'password') {
+        apiKeyInput.type = 'text';
+        if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        apiKeyInput.type = 'password';
+        if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye');
+      }
+      lucide.createIcons();
+    });
+  }
+
+  // Appearance Select Buttons
+  document.querySelectorAll('.mode-select-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-select-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // Theme Select Buttons
+  document.querySelectorAll('.theme-option-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.theme-option-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // Save Settings
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      const newApiKey = apiKeyInput.value.trim();
+      const activeAppearanceBtn = document.querySelector('.mode-select-btn.active');
+      const activeThemeBtn = document.querySelector('.theme-option-btn.active');
+
+      const newAppearance = activeAppearanceBtn ? activeAppearanceBtn.getAttribute('data-appearance') : 'auto';
+      const newTheme = activeThemeBtn ? activeThemeBtn.getAttribute('data-theme') : 'warm';
+
+      const apiKeyChanged = newApiKey !== settingsState.apiKey;
+
+      // Save to state and storage
+      settingsState.appearance = newAppearance;
+      settingsState.theme = newTheme;
+      settingsState.apiKey = newApiKey;
+
+      localStorage.setItem('weread_appearance', newAppearance);
+      localStorage.setItem('weread_theme', newTheme);
+      
+      if (newApiKey) {
+        localStorage.setItem('weread_api_key', KeyCrypt.encrypt(newApiKey));
+      } else {
+        localStorage.removeItem('weread_api_key');
+      }
+
+      // Apply the selected settings
+      applyTheme(newAppearance, newTheme);
+      hideSettings();
+      showToast("设置已保存", "success");
+
+      // If the API key changed, refresh all data immediately
+      if (apiKeyChanged) {
+        await refreshAllData();
+      }
+    });
+  }
+
+  // Listen to system theme changes in auto mode
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (settingsState.appearance === 'auto') {
+      applyTheme('auto', settingsState.theme);
+    }
+  });
+}
+
+function applyTheme(appearance, theme) {
+  const root = document.documentElement;
+  root.setAttribute('data-appearance', appearance);
+  root.setAttribute('data-theme', theme);
+
+  // Determine active visual dark status
+  let isDark = false;
+  if (appearance === 'dark') {
+    isDark = true;
+  } else if (appearance === 'auto') {
+    isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  } else {
+    // Light mode (or custom dark-forcing themes)
+    if (theme === 'dark' || theme === 'cyber') {
+      isDark = true;
+    }
+  }
+
+  if (isDark) {
+    root.classList.add('dark-mode-applied');
+    root.setAttribute('data-active-style', 'dark');
+  } else {
+    root.classList.remove('dark-mode-applied');
+    root.setAttribute('data-active-style', 'light');
+  }
+}
 
 // Global State
 const state = {
@@ -86,6 +284,7 @@ const tabMeta = {
 // ========================== INIT ==========================
 
 document.addEventListener('DOMContentLoaded', async () => {
+  initSettings();
   setupTabListeners();
   setupStatsToggles();
   setupShelfFilters();
@@ -204,9 +403,13 @@ function setupShelfFilters() {
 // ========================== MODAL SETUP ==========================
 
 function setupModals() {
+  const settingsModal = document.getElementById('settings-modal');
   window.addEventListener('click', (e) => {
     if (e.target === el.bookDetailModal) closeBookDetailModal();
     if (e.target === el.notesViewerModal) closeNotesViewerModal();
+    if (e.target === settingsModal) {
+      settingsModal.classList.remove('active');
+    }
   });
   
   // Close on Escape key
@@ -214,6 +417,7 @@ function setupModals() {
     if (e.key === 'Escape') {
       closeBookDetailModal();
       closeNotesViewerModal();
+      if (settingsModal) settingsModal.classList.remove('active');
     }
   });
 }
@@ -257,11 +461,20 @@ async function refreshAllData() {
 // ========================== API CALLER ==========================
 
 async function callApi(apiName, params = {}) {
+  // Retrieve stored API key
+  const storedKeyEncrypted = localStorage.getItem('weread_api_key');
+  const userApiKey = storedKeyEncrypted ? KeyCrypt.decrypt(storedKeyEncrypted) : null;
+
+  const requestBody = { api_name: apiName, ...params };
+  if (userApiKey) {
+    requestBody.user_api_key = userApiKey;
+  }
+
   try {
     const response = await fetch('/api/weread', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_name: apiName, ...params })
+      body: JSON.stringify(requestBody)
     });
     
     const data = await response.json();

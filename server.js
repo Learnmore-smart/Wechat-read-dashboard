@@ -26,14 +26,16 @@ if (!WEREAD_API_KEY) {
 // Proxy endpoint to handle CORS and auth
 app.post('/api/weread', async (req, res) => {
   try {
-    const { api_name, ...restParams } = req.body;
+    const { api_name, user_api_key, ...restParams } = req.body;
     
     if (!api_name) {
       return res.status(400).json({ errcode: -1, errmsg: "api_name is required in the request body" });
     }
 
-    if (!WEREAD_API_KEY) {
-      return res.status(500).json({ errcode: -1, errmsg: "WeChat Reading API key is missing on the server. Please check .env" });
+    const activeApiKey = user_api_key || WEREAD_API_KEY;
+
+    if (!activeApiKey) {
+      return res.status(500).json({ errcode: -1, errmsg: "WeChat Reading API key is missing. Please configure it in Settings or check .env" });
     }
 
     // Build the request body with skill_version (mandatory for server side verification)
@@ -49,7 +51,7 @@ app.post('/api/weread', async (req, res) => {
     const response = await fetch("https://i.weread.qq.com/api/agent/gateway", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${WEREAD_API_KEY}`,
+        "Authorization": `Bearer ${activeApiKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify(requestBody)

@@ -9,7 +9,7 @@
   <!-- Preconnect for Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Noto+Serif+SC:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
 
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -31,9 +31,7 @@
     <!-- ===== Sidebar ===== -->
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <div class="brand-icon">
-          <i data-lucide="book-open-text"></i>
-        </div>
+        <img src="wechat-read.png" alt="WeRead" class="brand-logo-img">
         <span class="brand-name">WeRead</span>
       </div>
 
@@ -57,14 +55,19 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div class="user-profile">
-          <div class="user-avatar" id="user-avatar-placeholder">
-            <i data-lucide="circle-user-round"></i>
+        <div class="user-profile-wrapper">
+          <div class="user-profile">
+            <div class="user-avatar" id="user-avatar-placeholder">
+              <i data-lucide="circle-user-round"></i>
+            </div>
+            <div class="user-info">
+              <div class="user-name" id="user-display-name">WeRead Reader</div>
+              <div class="user-status"><span class="status-dot"></span>在线</div>
+            </div>
           </div>
-          <div class="user-info">
-            <div class="user-name" id="user-display-name">WeRead Reader</div>
-            <div class="user-status"><span class="status-dot"></span>在线</div>
-          </div>
+          <button class="icon-btn settings-trigger-btn" id="open-settings-btn" title="系统设置">
+            <i data-lucide="settings"></i>
+          </button>
         </div>
       </div>
     </aside>
@@ -295,6 +298,103 @@
         <span class="subtitle" id="notes-viewer-author">作者</span>
       </div>
       <div class="modal-body notes-list-container" id="notes-viewer-body"></div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settings-modal">
+    <div class="modal-container modal-medium">
+      <button class="close-btn" id="close-settings-btn"><i data-lucide="x"></i></button>
+      <div class="modal-header">
+        <h2>系统设置</h2>
+        <span class="subtitle">管理 API 密钥与界面主题偏好</span>
+      </div>
+      <div class="modal-body settings-body-container">
+        <!-- API Key Section -->
+        <div class="settings-section">
+          <h3>API 密钥配置</h3>
+          <p class="section-hint">粘贴你的微信读书 API 密钥（将加密存储在浏览器本地中，安全不上传）</p>
+          <div class="api-key-input-wrapper">
+            <input type="password" id="settings-api-key-input" placeholder="输入 wrk-... 格式的密钥">
+            <button class="icon-btn toggle-pwd-btn" id="toggle-api-key-visibility">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Appearance Mode -->
+        <div class="settings-section">
+          <h3>深浅色模式</h3>
+          <div class="appearance-toggles">
+            <button class="mode-select-btn" data-appearance="auto">
+              <i data-lucide="monitor"></i>
+              <span>跟随系统</span>
+            </button>
+            <button class="mode-select-btn" data-appearance="light">
+              <i data-lucide="sun"></i>
+              <span>浅色模式</span>
+            </button>
+            <button class="mode-select-btn" data-appearance="dark">
+              <i data-lucide="moon"></i>
+              <span>深色模式</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Design Themes Section (6 themes) -->
+        <div class="settings-section">
+          <h3>界面主题配色</h3>
+          <p class="section-hint">选择你喜欢的阅读主题配色</p>
+          <div class="theme-select-grid">
+            <!-- Theme 1: Classic Warm -->
+            <button class="theme-option-btn" data-theme="warm">
+              <span class="theme-preview-color" style="background:#faf9f5; border:1px solid #e2e0d9;">
+                <span style="background:#1b4fc6; width:6px; height:6px; border-radius:50%; display:block;"></span>
+              </span>
+              <span class="theme-option-label">温暖书香</span>
+            </button>
+            <!-- Theme 2: Vintage Newspaper -->
+            <button class="theme-option-btn" data-theme="sepia">
+              <span class="theme-preview-color" style="background:#f3efe0; border:1px solid #d8cfb4;">
+                <span style="background:#854d0e; width:6px; height:6px; border-radius:50%; display:block;"></span>
+              </span>
+              <span class="theme-option-label">复古羊皮</span>
+            </button>
+            <!-- Theme 3: Royal Library -->
+            <button class="theme-option-btn" data-theme="navy">
+              <span class="theme-preview-color" style="background:#fafbfe; border:1px solid #e2e8f0;">
+                <span style="background:#b45309; width:6px; height:6px; border-radius:50%; display:block;"></span>
+              </span>
+              <span class="theme-option-label">皇家图书馆</span>
+            </button>
+            <!-- Theme 4: Nordic Forest -->
+            <button class="theme-option-btn" data-theme="sage">
+              <span class="theme-preview-color" style="background:#f4f7f6; border:1px solid #d1dbd7;">
+                <span style="background:#0f766e; width:6px; height:6px; border-radius:50%; display:block;"></span>
+              </span>
+              <span class="theme-option-label">北欧森林</span>
+            </button>
+            <!-- Theme 5: Ebony Ink -->
+            <button class="theme-option-btn" data-theme="dark">
+              <span class="theme-preview-color" style="background:#121212; border:1px solid #262626;">
+                <span style="background:#3b82f6; width:6px; height:6px; border-radius:50%; display:block;"></span>
+              </span>
+              <span class="theme-option-label">水墨玄青</span>
+            </button>
+            <!-- Theme 6: Cyberpunk Minimal -->
+            <button class="theme-option-btn" data-theme="cyber">
+              <span class="theme-preview-color" style="background:#0b0f19; border:1px solid #1e293b;">
+                <span style="background:#ec4899; width:6px; height:6px; border-radius:50%; display:block;"></span>
+              </span>
+              <span class="theme-option-label">极客霓虹</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:8px; border-top:1px solid var(--border-light); padding-top:16px; margin-top:16px;">
+        <button class="btn btn-secondary" id="cancel-settings-btn">取消</button>
+        <button class="btn btn-primary" id="save-settings-btn">保存设置</button>
+      </div>
     </div>
   </div>
 
