@@ -14,8 +14,12 @@ app.use(cors());
 app.use(express.json());
 
 // Redirect /wechat-read-stats to /wechat-read-stats/ to ensure relative imports resolve correctly
-app.get('/wechat-read-stats', (req, res) => {
-  res.redirect(301, '/wechat-read-stats/');
+app.get('/wechat-read-stats', (req, res, next) => {
+  if (req.path === '/wechat-read-stats') {
+    const query = req.url.slice(req.path.length);
+    return res.redirect(301, '/wechat-read-stats/' + query);
+  }
+  next();
 });
 
 // Serve static assets from public folder
