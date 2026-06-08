@@ -13,18 +13,15 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Redirect /wechat-read-stats to /wechat-read-stats/ to ensure relative imports resolve correctly
-app.get('/wechat-read-stats', (req, res, next) => {
-  if (req.path === '/wechat-read-stats') {
-    const query = req.url.slice(req.path.length);
-    return res.redirect(301, '/wechat-read-stats/' + query);
-  }
-  next();
-});
-
-// Serve static assets from public folder
-app.use('/wechat-read-stats', express.static(path.join(__dirname, 'public')));
+// Serve static assets from public folder under both root and /wechat-read-stats subpath
+// redirect: false prevents express.static from issuing 301s that loop behind Vercel rewrites
+app.use('/wechat-read-stats', express.static(path.join(__dirname, 'public'), { redirect: false }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve index.html for bare /wechat-read-stats (no trailing slash) — no redirect needed
+app.get('/wechat-read-stats', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Retrieve WeRead API key from environment
 const WEREAD_API_KEY = process.env.WECHAT_READ_SECRET || process.env.WEREAD_API_KEY;
@@ -107,3 +104,6 @@ app.listen(PORT, () => {
   console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`==================================================`);
 });
+
+// Export for Vercel serverless deployment (@vercel/node)
+module.exports = app;
