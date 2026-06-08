@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeRead — 微信读书控制台</title>
+  <meta name="description" content="微信读书数据控制台：跟踪阅读统计、管理书架、回顾笔记、发现优质好书推荐。">
+
+  <!-- Preconnect for Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Favicon -->
+  <link rel="icon" href="wechat-read.ico" type="image/x-icon">
+  <link rel="shortcut icon" href="wechat-read.ico" type="image/x-icon">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top progress bar for data transitions -->
+  <div class="top-loading-bar" id="top-loading-bar"></div>
+
+  <div class="app-container">
+
+    <!-- ===== Sidebar ===== -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <i data-lucide="book-open-text"></i>
+        </div>
+        <span class="brand-name">WeRead</span>
+      </div>
+
+      <nav class="sidebar-menu">
+        <button class="menu-item active" data-tab="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>阅读大盘</span>
+        </button>
+        <button class="menu-item" data-tab="bookshelf">
+          <i data-lucide="library-big"></i>
+          <span>我的书架</span>
+        </button>
+        <button class="menu-item" data-tab="notes">
+          <i data-lucide="notebook-pen"></i>
+          <span>阅读笔记</span>
+        </button>
+        <button class="menu-item" data-tab="recommend">
+          <i data-lucide="sparkles"></i>
+          <span>发现好书</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar" id="user-avatar-placeholder">
+            <i data-lucide="circle-user-round"></i>
+          </div>
+          <div class="user-info">
+            <div class="user-name" id="user-display-name">WeRead Reader</div>
+            <div class="user-status"><span class="status-dot"></span>在线</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== Main Content ===== -->
+    <main class="main-content">
+
+      <!-- Header -->
+      <header class="main-header">
+        <div class="header-title">
+          <h1 id="page-title">阅读大盘</h1>
+          <p class="header-subtitle" id="page-subtitle">查看本月阅读统计及最近阅读偏好</p>
+        </div>
+
+        <div class="header-stats-row">
+          <div class="header-stat-card">
+            <span class="stat-label" id="header-stat-time-label">本月时长</span>
+            <span class="stat-value" id="header-stat-time">0h 0m</span>
+          </div>
+          <div class="header-stat-card">
+            <span class="stat-label" id="header-stat-days-label">有效天数</span>
+            <span class="stat-value" id="header-stat-days">0天</span>
+          </div>
+          <div class="header-stat-card">
+            <span class="stat-label" id="header-stat-notes-label">笔记总数</span>
+            <span class="stat-value" id="header-stat-notes">0条</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <section class="content-body">
+
+        <!-- ===== Dashboard Tab ===== -->
+        <div id="tab-dashboard" class="tab-pane active">
+          <div class="stats-grid">
+            <div class="glass-card stat-detail-card highlight-glow">
+              <div class="card-icon"><i data-lucide="clock"></i></div>
+              <div class="card-info">
+                <h3 id="dash-total-time-label">总阅读时间</h3>
+                <h2 id="dash-total-time">0 小时 0 分钟</h2>
+                <p class="trend-text" id="dash-compare-time">较上月 --</p>
+              </div>
+            </div>
+
+            <div class="glass-card stat-detail-card">
+              <div class="card-icon"><i data-lucide="calendar-check"></i></div>
+              <div class="card-info">
+                <h3 id="dash-read-days-label">累计阅读天数</h3>
+                <h2 id="dash-read-days">0 天</h2>
+                <p class="trend-text">单日读满1分钟计入有效</p>
+              </div>
+            </div>
+
+            <div class="glass-card stat-detail-card">
+              <div class="card-icon"><i data-lucide="activity"></i></div>
+              <div class="card-info">
+                <h3>日均阅读时长</h3>
+                <h2 id="dash-avg-time">0 分钟</h2>
+                <p class="trend-text" id="dash-avg-time-subtitle">按本月自然日平均</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts -->
+          <div class="dashboard-mid-grid">
+            <div class="glass-card chart-card">
+              <div class="card-header">
+                <h3 id="activity-chart-title">月度每日阅读时长 (秒)</h3>
+                <div class="card-actions">
+                  <div class="chart-toggles" id="stats-mode-toggles">
+                    <button class="toggle-btn" data-mode="weekly">周</button>
+                    <button class="toggle-btn active" data-mode="monthly">月</button>
+                    <button class="toggle-btn" data-mode="annually">年</button>
+                    <button class="toggle-btn" data-mode="overall">全部</button>
+                  </div>
+                </div>
+              </div>
+              <div class="chart-container" id="bar-chart-container">
+                <div class="empty-state">
+                  <i data-lucide="bar-chart-3"></i>
+                  <p>无阅读时长明细数据</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="glass-card chart-card">
+              <div class="card-header">
+                <h3>品类阅读偏好</h3>
+                <div class="card-actions">
+                  <span class="badge">分类权重</span>
+                </div>
+              </div>
+              <div class="chart-container" id="prefer-category-container">
+                <div class="empty-state">
+                  <i data-lucide="pie-chart"></i>
+                  <p>无品类偏好数据</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rankings + Habits -->
+          <div class="dashboard-bottom-grid">
+            <div class="glass-card rank-card">
+              <div class="card-header">
+                <h3>阅读最久书籍排行</h3>
+              </div>
+              <div class="rank-list" id="dash-rank-list">
+                <div class="empty-state">
+                  <i data-lucide="trophy"></i>
+                  <p>无书籍阅读排行</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="glass-card habits-card">
+              <div class="card-header">
+                <h3>阅读偏好画像</h3>
+              </div>
+              <div class="habits-body" id="dash-habits-body">
+                <div class="habit-item">
+                  <div class="habit-icon"><i data-lucide="sun"></i></div>
+                  <div class="habit-content">
+                    <h4>偏好时段</h4>
+                    <p id="habit-time-word">暂无分析数据</p>
+                  </div>
+                </div>
+                <div class="habit-item">
+                  <div class="habit-icon"><i data-lucide="tag"></i></div>
+                  <div class="habit-content">
+                    <h4>核心分类</h4>
+                    <p id="habit-category-word">暂无分析数据</p>
+                  </div>
+                </div>
+                <div class="habit-item">
+                  <div class="habit-icon"><i data-lucide="headphones"></i></div>
+                  <div class="habit-content">
+                    <h4>阅读占比</h4>
+                    <p id="habit-read-rate">暂无分析数据</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Bookshelf Tab ===== -->
+        <div id="tab-bookshelf" class="tab-pane">
+          <div class="shelf-controls">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="text" id="shelf-search-input" placeholder="搜索书名或作者...">
+            </div>
+
+            <div class="filter-tabs">
+              <button class="filter-btn active" data-filter="all">全部 <span class="filter-count" id="count-all">0</span></button>
+              <button class="filter-btn" data-filter="in-progress">在读 <span class="filter-count" id="count-reading">0</span></button>
+              <button class="filter-btn" data-filter="finished">已读完 <span class="filter-count" id="count-finished">0</span></button>
+              <button class="filter-btn" data-filter="secret">私密 <span class="filter-count" id="count-secret">0</span></button>
+            </div>
+          </div>
+
+          <div class="books-grid" id="bookshelf-grid">
+            <div class="empty-state">
+              <i data-lucide="library-big"></i>
+              <p>书架中暂无书籍</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Notes Tab ===== -->
+        <div id="tab-notes" class="tab-pane">
+          <div class="notes-header">
+            <p class="notes-intro-text">共有 <strong id="notes-total-books">0</strong> 本书记录了你的心迹。点击查看详细划线与想法。</p>
+          </div>
+          <div class="notebooks-grid" id="notebooks-grid">
+            <div class="empty-state">
+              <i data-lucide="notebook-pen"></i>
+              <p>暂无读书笔记</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Recommendations Tab ===== -->
+        <div id="tab-recommend" class="tab-pane">
+          <div class="recommend-header">
+            <h3>为你精选</h3>
+            <p>基于你的阅读偏好推荐以下书籍与有声内容</p>
+          </div>
+          <div class="recommend-grid" id="recommend-grid">
+            <div class="empty-state">
+              <i data-lucide="wand-sparkles"></i>
+              <p>暂无推荐内容，请稍后再试</p>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loader-wrapper">
+      <div class="brand-title">WeRead 控制台</div>
+      <div class="progress-bar-container">
+        <div class="loading-progress-bar"></div>
+      </div>
+      <p class="loading-text">同步微信读书数据中...</p>
+    </div>
+  </div>
+
+  <!-- Book Detail Modal -->
+  <div class="modal-backdrop" id="book-detail-modal">
+    <div class="modal-container glass-card">
+      <button class="close-btn" onclick="closeBookDetailModal()"><i data-lucide="x"></i></button>
+      <div class="modal-body" id="book-detail-body"></div>
+    </div>
+  </div>
+
+  <!-- Notes Viewer Modal -->
+  <div class="modal-backdrop" id="notes-viewer-modal">
+    <div class="modal-container glass-card modal-large">
+      <button class="close-btn" onclick="closeNotesViewerModal()"><i data-lucide="x"></i></button>
+      <div class="modal-header">
+        <h2 id="notes-viewer-title">读书笔记</h2>
+        <span class="subtitle" id="notes-viewer-author">作者</span>
+      </div>
+      <div class="modal-body notes-list-container" id="notes-viewer-body"></div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- App Script -->
+  <script src="app.js"></script>
+</body>
+</html>
