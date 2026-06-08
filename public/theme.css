@@ -1,0 +1,299 @@
+/* ==========================================================================
+   WeRead Console — Dynamic Theme System v2.0
+   ========================================================================== */
+
+/* ===== 1. Base Variables per Appearance Style ===== */
+
+html[data-active-style="light"] {
+  --menu-hover-color: var(--primary);
+  --menu-hover-bg:    rgba(0, 0, 0, 0.02);
+}
+
+html[data-active-style="dark"] {
+  --stone-50:  #1c1c1e;
+  --stone-100: #2c2c2e;
+  --stone-200: #3a3a3c;
+  --stone-300: #48484a;
+  --stone-400: #8e8e93;
+  --stone-500: #aeaeb2;
+  --stone-600: #c7c7cc;
+  --stone-700: #d1d1d6;
+  --stone-800: #e5e5ea;
+  --stone-900: #f2f2f7;
+
+  --primary-blue: #3b82f6;
+  --primary-active-bg: rgba(59, 130, 246, 0.08);
+  --primary:       #f2f2f7; 
+  --primary-soft:  #aeaeb2;
+  --primary-deep:  #ffffff;
+  --primary-bg:    #2c2c2e;
+  --primary-ring:  #48484a;
+
+  --bg-body:     #121212;
+  --bg-sidebar:  #181818;
+  --bg-input:    #1c1c1e;
+  --bg-muted:    #18181b;
+  --bg-pill:     #2c2c2e;
+
+  --text-1: var(--stone-900);
+  --text-2: var(--stone-600);
+  --text-3: var(--stone-400);
+
+  --border:       #27272a;
+  --border-light: #202023;
+
+  --menu-hover-color: var(--text-1);
+  --menu-hover-bg:    rgba(255, 255, 255, 0.04);
+
+  /* Dark mode badge color overrides */
+  --badge-highlight-color: #fbbf24;
+  --badge-review-color: #34d399;
+}
+
+/* ===== 2. Dark Mode Contrast Overrides for Components ===== */
+
+html[data-active-style="dark"] .rank-item:nth-child(1) .rank-number {
+  color: var(--bg-body);
+}
+
+html[data-active-style="dark"] .btn-primary {
+  color: var(--bg-body);
+}
+
+/* ===== 3. Theme Overrides ===== */
+
+/* Theme 1: Classic Warm (温暖书香) */
+/* Uses root variables (light) and html[data-active-style="dark"] (dark) */
+
+/* Theme 2: Vintage Newspaper (Sepia / 复古羊皮) */
+html[data-theme="sepia"][data-active-style="light"] {
+  --bg-body:     #f3efe0;
+  --bg-sidebar:  #eae4d0;
+  --border:       #d8cfb4;
+  --border-light: #e0d9c3;
+  --text-1:       #2b2b2a;
+  --text-2:       #5c574c;
+  --text-3:       #8a8270;
+  --primary-blue: #854d0e;
+  --primary-active-bg: rgba(133, 77, 14, 0.08);
+}
+html[data-theme="sepia"][data-active-style="dark"] {
+  --bg-body:     #1c1813;
+  --bg-sidebar:  #241f18;
+  --border:       #383025;
+  --border-light: #2d261e;
+  --text-1:       #eae3d2;
+  --text-2:       #bfae94;
+  --text-3:       #8c7c64;
+  --primary-blue: #f59e0b;
+  --primary-active-bg: rgba(245, 158, 11, 0.08);
+  --primary:       #eae3d2;
+  --primary-soft:  #bfae94;
+  --primary-deep:  #ffffff;
+
+  --stone-50:  #241f18;
+  --stone-100: #2d261e;
+  --stone-200: #383025;
+  --stone-300: #453c2e;
+  --stone-400: #8c7c64;
+  --stone-500: #a89679;
+  --stone-600: #bfae94;
+  --stone-700: #d1c3ad;
+  --stone-800: #eae3d2;
+  --stone-900: #f4efe2;
+  --bg-input:  #241f18;
+  --bg-muted:  #1c1813;
+  --bg-pill:   #2d261e;
+}
+
+/* Theme 3: Royal Library (Navy & Gold / 皇家图书馆) */
+html[data-theme="navy"][data-active-style="light"] {
+  --bg-body:     #fafbfe;
+  --bg-sidebar:  #f0f2fa;
+  --border:       #e2e8f0;
+  --border-light: #edf2f7;
+  --text-1:       #0f172a;
+  --text-2:       #475569;
+  --text-3:       #94a3b8;
+  --primary-blue: #1b4fc6;
+  --primary-active-bg: rgba(27, 79, 198, 0.06);
+}
+html[data-theme="navy"][data-active-style="dark"] {
+  --bg-body:     #080e1e;
+  --bg-sidebar:  #0d1527;
+  --border:       #1e293b;
+  --border-light: #162032;
+  --text-1:       #f1f5f9;
+  --text-2:       #94a3b8;
+  --text-3:       #64748b;
+  --primary-blue: #fbbf24;
+  --primary-active-bg: rgba(251, 191, 36, 0.08);
+  --primary:       #f1f5f9;
+  --primary-soft:  #94a3b8;
+  --primary-deep:  #ffffff;
+
+  --stone-50:  #0d1527;
+  --stone-100: #162032;
+  --stone-200: #1e293b;
+  --stone-300: #334155;
+  --stone-400: #64748b;
+  --stone-500: #475569;
+  --stone-600: #94a3b8;
+  --stone-700: #cbd5e1;
+  --stone-800: #e2e8f0;
+  --stone-900: #f1f5f9;
+  --bg-input:  #0d1527;
+  --bg-muted:  #080e1e;
+  --bg-pill:   #162032;
+}
+
+/* Theme 4: Nordic Forest (Sage & Teal / 北欧森林) */
+html[data-theme="sage"][data-active-style="light"] {
+  --bg-body:     #f4f7f6;
+  --bg-sidebar:  #ebf0ee;
+  --border:       #d1dbd7;
+  --border-light: #dbe4e1;
+  --text-1:       #1e293b;
+  --text-2:       #475569;
+  --text-3:       #94a3b8;
+  --primary-blue: #0f766e;
+  --primary-active-bg: rgba(15, 118, 110, 0.08);
+}
+html[data-theme="sage"][data-active-style="dark"] {
+  --bg-body:     #0b120f;
+  --bg-sidebar:  #101a15;
+  --border:       #1e2e26;
+  --border-light: #16241e;
+  --text-1:       #e2e8f0;
+  --text-2:       #94a3b8;
+  --text-3:       #64748b;
+  --primary-blue: #2dd4bf;
+  --primary-active-bg: rgba(45, 212, 191, 0.08);
+  --primary:       #e2e8f0;
+  --primary-soft:  #94a3b8;
+  --primary-deep:  #ffffff;
+
+  --stone-50:  #101a15;
+  --stone-100: #16241e;
+  --stone-200: #1e2e26;
+  --stone-300: #2d4237;
+  --stone-400: #5c7568;
+  --stone-500: #64748b;
+  --stone-600: #94a3b8;
+  --stone-700: #cbd5e1;
+  --stone-800: #e2e8f0;
+  --stone-900: #f1f5f9;
+  --bg-input:  #101a15;
+  --bg-muted:  #0b120f;
+  --bg-pill:   #16241e;
+}
+
+/* Theme 5: Ebony Ink (水墨玄青) */
+html[data-theme="dark"][data-active-style="light"] {
+  --bg-body:     #f4f4f5;
+  --bg-sidebar:  #e4e4e7;
+  --border:       #d4d4d8;
+  --border-light: #e4e4e7;
+  --text-1:       #18181b;
+  --text-2:       #52525b;
+  --text-3:       #a1a1aa;
+  --primary-blue: #09090b;
+  --primary-active-bg: rgba(9, 9, 11, 0.08);
+
+  --stone-50:  #ffffff;
+  --stone-100: #f4f4f5;
+  --stone-200: #e4e4e7;
+  --stone-300: #d4d4d8;
+  --stone-400: #a1a1aa;
+  --stone-500: #71717a;
+  --stone-600: #52525b;
+  --stone-700: #3f3f46;
+  --stone-800: #27272a;
+  --stone-900: #18181b;
+  --bg-input:  #ffffff;
+  --bg-muted:  #f4f4f5;
+  --bg-pill:   #e4e4e7;
+}
+html[data-theme="dark"][data-active-style="dark"] {
+  --bg-body:     #0c0c0d;
+  --bg-sidebar:  #121214;
+  --border:       #202023;
+  --border-light: #18181b;
+  --text-1:       #f4f4f5;
+  --text-2:       #a1a1aa;
+  --text-3:       #71717a;
+  --primary-blue: #3b82f6;
+  --primary-active-bg: rgba(59, 130, 246, 0.08);
+  --primary:       #f4f4f5;
+  --primary-soft:  #a1a1aa;
+  --primary-deep:  #ffffff;
+
+  --stone-50:  #121214;
+  --stone-100: #18181b;
+  --stone-200: #202023;
+  --stone-300: #27272a;
+  --stone-400: #52525b;
+  --stone-500: #71717a;
+  --stone-600: #a1a1aa;
+  --stone-700: #d4d4d8;
+  --stone-800: #e4e4e7;
+  --stone-900: #f4f4f5;
+  --bg-input:  #121214;
+  --bg-muted:  #0c0c0d;
+  --bg-pill:   #18181b;
+}
+
+/* Theme 6: Cyberpunk Minimal (极客霓虹) */
+html[data-theme="cyber"][data-active-style="light"] {
+  --bg-body:     #f8fafc;
+  --bg-sidebar:  #f1f5f9;
+  --border:       #cbd5e1;
+  --border-light: #e2e8f0;
+  --text-1:       #0f172a;
+  --text-2:       #475569;
+  --text-3:       #94a3b8;
+  --primary-blue: #db2777;
+  --primary-active-bg: rgba(219, 39, 119, 0.08);
+
+  --stone-50:  #ffffff;
+  --stone-100: #f1f5f9;
+  --stone-200: #e2e8f0;
+  --stone-300: #cbd5e1;
+  --stone-400: #94a3b8;
+  --stone-500: #64748b;
+  --stone-600: #475569;
+  --stone-700: #334155;
+  --stone-800: #1e293b;
+  --stone-900: #0f172a;
+  --bg-input:  #ffffff;
+  --bg-muted:  #f1f5f9;
+  --bg-pill:   #cbd5e1;
+}
+html[data-theme="cyber"][data-active-style="dark"] {
+  --bg-body:     #070a13;
+  --bg-sidebar:  #0b0f19;
+  --border:       #1e293b;
+  --border-light: #161e2e;
+  --text-1:       #f8fafc;
+  --text-2:       #cbd5e1;
+  --text-3:       #64748b;
+  --primary-blue: #ec4899;
+  --primary-active-bg: rgba(236, 72, 153, 0.08);
+  --primary:       #f8fafc;
+  --primary-soft:  #cbd5e1;
+  --primary-deep:  #ffffff;
+
+  --stone-50:  #0b0f19;
+  --stone-100: #161e2e;
+  --stone-200: #1e293b;
+  --stone-300: #334155;
+  --stone-400: #475569;
+  --stone-500: #64748b;
+  --stone-600: #94a3b8;
+  --stone-700: #cbd5e1;
+  --stone-800: #e2e8f0;
+  --stone-900: #f8fafc;
+  --bg-input:  #0b0f19;
+  --bg-muted:  #070a13;
+  --bg-pill:   #1e293b;
+}

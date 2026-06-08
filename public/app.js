@@ -30,23 +30,31 @@ const KeyCrypt = {
   }
 };
 
+// ========================== TRANSLATION & LOCALIZATION SYSTEM ==========================
+const i18n = {};
+
 // ========================== SYSTEM SETTINGS & THEMES ==========================
 const settingsState = {
   appearance: 'auto', // 'auto', 'light', 'dark'
   theme: 'warm', // 'warm', 'sepia', 'navy', 'sage', 'dark', 'cyber'
-  apiKey: ''
+  apiKey: '',
+  language: 'zh' // 'zh', 'en'
 };
 
-function initSettings() {
+async function initSettings() {
   // Load settings from localStorage
   settingsState.appearance = localStorage.getItem('weread_appearance') || 'auto';
   settingsState.theme = localStorage.getItem('weread_theme') || 'warm';
+  settingsState.language = localStorage.getItem('weread_language') || 'zh';
   
   const storedKey = localStorage.getItem('weread_api_key');
   settingsState.apiKey = storedKey ? KeyCrypt.decrypt(storedKey) : '';
 
   // Apply theme on load
   applyTheme(settingsState.appearance, settingsState.theme);
+  
+  // Apply language on load
+  await updateLanguage(settingsState.language);
 
   // Setup DOM Event Listeners for Settings Modal
   const openBtn = document.getElementById('open-settings-btn');
@@ -65,6 +73,15 @@ function initSettings() {
       // Select appropriate appearance button
       document.querySelectorAll('.mode-select-btn').forEach(btn => {
         if (btn.getAttribute('data-appearance') === settingsState.appearance) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      // Select appropriate language button
+      document.querySelectorAll('.lang-select-btn').forEach(btn => {
+        if (btn.getAttribute('data-lang') === settingsState.language) {
           btn.classList.add('active');
         } else {
           btn.classList.remove('active');
@@ -110,57 +127,83 @@ function initSettings() {
     });
   }
 
-  // Appearance Select Buttons
+  // Helper to save API key
+  const saveApiKey = async () => {
+    const newApiKey = apiKeyInput.value.trim();
+    if (newApiKey === settingsState.apiKey) return;
+
+    settingsState.apiKey = newApiKey;
+    if (newApiKey) {
+      localStorage.setItem('weread_api_key', KeyCrypt.encrypt(newApiKey));
+    } else {
+      localStorage.removeItem('weread_api_key');
+    }
+    showToast(i18n[settingsState.language].keyUpdated, "success");
+    await refreshAllData();
+  };
+
+  // Auto-save API Key on enter or blur
+  if (apiKeyInput) {
+    apiKeyInput.addEventListener('blur', saveApiKey);
+    apiKeyInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        apiKeyInput.blur(); // Triggers blur listener to save
+      }
+    });
+  }
+
+  // Appearance Select Buttons (Reactive Save)
   document.querySelectorAll('.mode-select-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.mode-select-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+
+      const newAppearance = btn.getAttribute('data-appearance') || 'auto';
+      if (newAppearance !== settingsState.appearance) {
+        settingsState.appearance = newAppearance;
+        localStorage.setItem('weread_appearance', newAppearance);
+        applyTheme(newAppearance, settingsState.theme);
+      }
     });
   });
 
-  // Theme Select Buttons
+  // Language Select Buttons (Reactive Save)
+  document.querySelectorAll('.lang-select-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const newLang = btn.getAttribute('data-lang') || 'zh';
+      if (newLang !== settingsState.language) {
+        await updateLanguage(newLang);
+        // Refresh dynamically rendered content components
+        renderHeaderStats();
+        renderDashboard();
+        renderBookshelf();
+        renderNotebooksList();
+        renderRecommendations();
+      }
+    });
+  });
+
+  // Theme Select Buttons (Reactive Save)
   document.querySelectorAll('.theme-option-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.theme-option-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+
+      const newTheme = btn.getAttribute('data-theme') || 'warm';
+      if (newTheme !== settingsState.theme) {
+        settingsState.theme = newTheme;
+        localStorage.setItem('weread_theme', newTheme);
+        applyTheme(settingsState.appearance, newTheme);
+      }
     });
   });
 
-  // Save Settings
-  if (saveBtn) {
-    saveBtn.addEventListener('click', async () => {
-      const newApiKey = apiKeyInput.value.trim();
-      const activeAppearanceBtn = document.querySelector('.mode-select-btn.active');
-      const activeThemeBtn = document.querySelector('.theme-option-btn.active');
-
-      const newAppearance = activeAppearanceBtn ? activeAppearanceBtn.getAttribute('data-appearance') : 'auto';
-      const newTheme = activeThemeBtn ? activeThemeBtn.getAttribute('data-theme') : 'warm';
-
-      const apiKeyChanged = newApiKey !== settingsState.apiKey;
-
-      // Save to state and storage
-      settingsState.appearance = newAppearance;
-      settingsState.theme = newTheme;
-      settingsState.apiKey = newApiKey;
-
-      localStorage.setItem('weread_appearance', newAppearance);
-      localStorage.setItem('weread_theme', newTheme);
-      
-      if (newApiKey) {
-        localStorage.setItem('weread_api_key', KeyCrypt.encrypt(newApiKey));
-      } else {
-        localStorage.removeItem('weread_api_key');
-      }
-
-      // Apply the selected settings
-      applyTheme(newAppearance, newTheme);
-      hideSettings();
-      showToast("设置已保存", "success");
-
-      // If the API key changed, refresh all data immediately
-      if (apiKeyChanged) {
-        await refreshAllData();
-      }
+  // API Key Help Collapsible Toggle
+  const helpToggle = document.getElementById('api-key-help-toggle');
+  const helpContent = document.getElementById('api-key-help-content');
+  if (helpToggle && helpContent) {
+    helpToggle.addEventListener('click', () => {
+      helpContent.classList.toggle('active');
     });
   }
 
@@ -172,22 +215,162 @@ function initSettings() {
   });
 }
 
+async function updateLanguage(lang) {
+  // If we haven't loaded the translations for this language yet, fetch them
+  if (!i18n[lang]) {
+    try {
+      const response = await fetch(`/locales/${lang}.json`);
+      if (!response.ok) throw new Error(`Failed to load translations for ${lang}`);
+      i18n[lang] = await response.json();
+    } catch (error) {
+      console.error("Error loading language files:", error);
+      // Fallback in case of network issue
+      i18n[lang] = {};
+    }
+  }
+
+  settingsState.language = lang;
+  localStorage.setItem('weread_language', lang);
+
+  // Set html lang attribute
+  document.documentElement.setAttribute('lang', lang === 'zh' ? 'zh-CN' : 'en');
+
+  // Translate elements with [data-i18n]
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (i18n[lang] && i18n[lang][key] !== undefined) {
+      el.innerHTML = i18n[lang][key];
+    }
+  });
+
+  // Translate elements with [data-i18n-placeholder]
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (i18n[lang] && i18n[lang][key] !== undefined) {
+      el.setAttribute('placeholder', i18n[lang][key]);
+    }
+  });
+
+  // Highlight active language button
+  document.querySelectorAll('.lang-select-btn').forEach(btn => {
+    if (btn.getAttribute('data-lang') === lang) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  // Update dynamic elements that might already be rendered
+  updateTabLabels(lang);
+}
+
+function openSettingsModalWithAlert() {
+  const modal = document.getElementById('settings-modal');
+  if (modal) {
+    const apiKeyInput = document.getElementById('settings-api-key-input');
+    if (apiKeyInput) {
+      apiKeyInput.value = settingsState.apiKey || '';
+      apiKeyInput.classList.add('input-alert');
+      setTimeout(() => apiKeyInput.classList.remove('input-alert'), 3000);
+    }
+    
+    // Auto-open settings
+    modal.classList.add('active');
+    
+    // Expand help instructions
+    const helpContent = document.getElementById('api-key-help-content');
+    if (helpContent) {
+      helpContent.classList.add('active');
+    }
+  }
+}
+
+function updateTabLabels(lang) {
+  const currentTab = state.activeTab;
+  const t = i18n[lang] || {};
+  const meta = (t.tabMeta && t.tabMeta[currentTab]) || { title: 'console.', subtitle: '' };
+  
+  if (el.pageTitle) el.pageTitle.textContent = meta.title;
+  
+  if (currentTab === 'dashboard') {
+    const subtitleMap = {
+      weekly: lang === 'zh' ? '查看本周阅读统计及最近阅读偏好' : 'View weekly reading stats and recent preferences',
+      monthly: lang === 'zh' ? '查看本月阅读统计及最近阅读偏好' : 'View monthly reading stats and recent preferences',
+      annually: lang === 'zh' ? '查看本年阅读统计及最近阅读偏好' : 'View annual reading stats and recent preferences',
+      overall: lang === 'zh' ? '查看生涯累计阅读统计及最近阅读偏好' : 'View lifetime reading stats and recent preferences'
+    };
+    if (el.pageSubtitle) el.pageSubtitle.textContent = subtitleMap[state.statsMode] || meta.subtitle;
+  } else {
+    if (el.pageSubtitle) el.pageSubtitle.textContent = meta.subtitle;
+  }
+
+  // Update stat label text in header
+  if (el.headerTimeLabel) {
+    el.headerTimeLabel.textContent = (t.timeLabel && t.timeLabel[state.statsMode]) || '';
+  }
+
+  if (el.headerDaysLabel) {
+    el.headerDaysLabel.textContent = (t.daysLabel && t.daysLabel[state.statsMode]) || '';
+  }
+
+  if (el.headerNotesLabel) {
+    el.headerNotesLabel.textContent = t.notesLabel || '';
+  }
+
+  // Update card static sub-hints and charts titles
+  const titleEl = document.getElementById('activity-chart-title');
+  if (titleEl) {
+    titleEl.textContent = (t.chartTitleMap && t.chartTitleMap[state.statsMode]) || '';
+  }
+
+  // Update compare time if dashboard data exists
+  const detailsCompareEl = document.getElementById('dash-compare-time');
+  if (detailsCompareEl && state.monthlyData) {
+    renderCompareTimeText(lang);
+  }
+
+  // Habits Labels
+  const habitTimeHeader = document.querySelector('.habit-item:nth-child(1) h4');
+  if (habitTimeHeader) habitTimeHeader.textContent = t.prefTime || '';
+  const habitCatHeader = document.querySelector('.habit-item:nth-child(2) h4');
+  if (habitCatHeader) habitCatHeader.textContent = t.coreCategory || '';
+  const habitRateHeader = document.querySelector('.habit-item:nth-child(3) h4');
+  if (habitRateHeader) habitRateHeader.textContent = t.readRate || '';
+}
+
+function renderCompareTimeText(lang) {
+  const d = state.monthlyData;
+  if (!d) return;
+  const t = i18n[lang] || {};
+  
+  if (d.compare !== undefined && d.compare !== null) {
+    const compVal = d.compare * 100;
+    if (compVal > 0) {
+      const tmpl = t.compareUp || '';
+      el.dashCompareTime.innerHTML = tmpl.replace('{percent}', compVal.toFixed(1));
+    } else if (compVal < 0) {
+      const tmpl = t.compareDown || '';
+      el.dashCompareTime.innerHTML = tmpl.replace('{percent}', Math.abs(compVal).toFixed(1));
+    } else {
+      el.dashCompareTime.textContent = t.compareFlat || '';
+    }
+  } else {
+    el.dashCompareTime.textContent = t.compareNoData || '';
+  }
+  lucide.createIcons();
+}
+
 function applyTheme(appearance, theme) {
   const root = document.documentElement;
   root.setAttribute('data-appearance', appearance);
   root.setAttribute('data-theme', theme);
 
-  // Determine active visual dark status
+  // Determine active visual dark status based strictly on appearance (light/dark/auto)
   let isDark = false;
   if (appearance === 'dark') {
     isDark = true;
   } else if (appearance === 'auto') {
     isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  } else {
-    // Light mode (or custom dark-forcing themes)
-    if (theme === 'dark' || theme === 'cyber') {
-      isDark = true;
-    }
   }
 
   if (isDark) {
@@ -215,7 +398,7 @@ const state = {
 
 // UI Elements
 const el = {
-  sidebarBtns: document.querySelectorAll('.menu-item'),
+  sidebarBtns: document.querySelectorAll('.sidebar-menu .menu-item'),
   tabPanes: document.querySelectorAll('.tab-pane'),
   loadingOverlay: document.getElementById('loading-overlay'),
   topLoadingBar: document.getElementById('top-loading-bar'),
@@ -273,18 +456,10 @@ const el = {
   toastContainer: document.getElementById('toast-container')
 };
 
-// Tab metadata
-const tabMeta = {
-  dashboard: { title: '阅读大盘', subtitle: '查看本月阅读统计及最近阅读偏好' },
-  bookshelf: { title: '我的书架', subtitle: '管理你的书架条目，支持分类检索与私密阅读管理' },
-  notes: { title: '阅读笔记', subtitle: '回顾与导出你在阅读过程中划下的段落与发表的想法' },
-  recommend: { title: '发现好书', subtitle: '根据你的阅读习惯个性化推荐的优质好书与有声书' }
-};
-
 // ========================== INIT ==========================
 
 document.addEventListener('DOMContentLoaded', async () => {
-  initSettings();
+  await initSettings();
   setupTabListeners();
   setupStatsToggles();
   setupShelfFilters();
@@ -307,22 +482,8 @@ function setupTabListeners() {
       el.tabPanes.forEach(pane => pane.classList.remove('active'));
       document.getElementById(`tab-${tabId}`).classList.add('active');
       
-      const meta = tabMeta[tabId] || { title: '控制台', subtitle: '' };
-      el.pageTitle.textContent = meta.title;
-      
-      if (tabId === 'dashboard') {
-        const subtitleMap = {
-          weekly: '查看本周阅读统计及最近阅读偏好',
-          monthly: '查看本月阅读统计及最近阅读偏好',
-          annually: '查看本年阅读统计及最近阅读偏好',
-          overall: '查看生涯累计阅读统计及最近阅读偏好'
-        };
-        el.pageSubtitle.textContent = subtitleMap[state.statsMode] || meta.subtitle;
-      } else {
-        el.pageSubtitle.textContent = meta.subtitle;
-      }
-      
       state.activeTab = tabId;
+      updateTabLabels(settingsState.language);
       lucide.createIcons();
     });
   });
@@ -351,24 +512,7 @@ function setupStatsToggles() {
         if (statsResult && !statsResult.errcode) {
           state.monthlyData = statsResult;
           
-          const titleMap = {
-            weekly: '周度每日阅读时长 (秒)',
-            monthly: '月度每日阅读时长 (秒)',
-            annually: '年度每月阅读时长 (秒)',
-            overall: '总计每年阅读时长 (秒)'
-          };
-          const titleEl = document.getElementById('activity-chart-title');
-          if (titleEl) titleEl.textContent = titleMap[mode];
-          
-          if (state.activeTab === 'dashboard') {
-            const subtitleMap = {
-              weekly: '查看本周阅读统计及最近阅读偏好',
-              monthly: '查看本月阅读统计及最近阅读偏好',
-              annually: '查看本年阅读统计及最近阅读偏好',
-              overall: '查看生涯累计阅读统计及最近阅读偏好'
-            };
-            el.pageSubtitle.textContent = subtitleMap[mode] || tabMeta.dashboard.subtitle;
-          }
+          updateTabLabels(settingsState.language);
           
           renderHeaderStats();
           renderDashboard();
@@ -425,7 +569,7 @@ function setupModals() {
 // ========================== DATA LOADING ==========================
 
 async function refreshAllData() {
-  showLoading(true, "正在同步微信读书数据...");
+  showLoading(true, i18n[settingsState.language].syncing);
   
   try {
     // Fetch all data in parallel for speed
@@ -448,10 +592,10 @@ async function refreshAllData() {
     renderNotebooksList();
     renderRecommendations();
     
-    showToast("数据同步完成", "success");
+    showToast(i18n[settingsState.language].syncSuccess, "success");
   } catch (error) {
     console.error("Error loading WeChat Reading data:", error);
-    showToast("同步微信读书数据失败，请检查网络或 .env 密钥配置", "error");
+    showToast(i18n[settingsState.language].syncFail, "error");
   } finally {
     state.isInitialLoad = false;
     showLoading(false);
@@ -480,6 +624,12 @@ async function callApi(apiName, params = {}) {
     const data = await response.json();
     if (data.errcode && data.errcode !== 0) {
       showToast(data.errmsg || `接口调用错误: ${apiName}`, "error");
+      
+      // Auto-open settings if API key is missing
+      if (data.errmsg && data.errmsg.toLowerCase().includes("api key is missing")) {
+        openSettingsModalWithAlert();
+      }
+      
       return null;
     }
     return data;
@@ -493,11 +643,11 @@ async function callApi(apiName, params = {}) {
 // ========================== LOADING UI ==========================
 
 // Full overlay for initial load
-function showLoading(show, message = "加载中...") {
+function showLoading(show, message) {
   if (show) {
     el.loadingOverlay.classList.remove('fade-out');
     const textEl = el.loadingOverlay.querySelector('.loading-text');
-    if (textEl) textEl.textContent = message;
+    if (textEl) textEl.textContent = message || i18n[settingsState.language].loading;
   } else {
     el.loadingOverlay.classList.add('fade-out');
   }
@@ -538,26 +688,16 @@ function showToast(message, type = "success") {
 // 1. Header Stats
 function renderHeaderStats() {
   const mode = state.statsMode || 'monthly';
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
   
   // Update header labels dynamically
   if (el.headerTimeLabel) {
-    const timeLabelMap = {
-      weekly: '本周时长',
-      monthly: '本月时长',
-      annually: '本年时长',
-      overall: '累计时长'
-    };
-    el.headerTimeLabel.textContent = timeLabelMap[mode] || '本月时长';
+    el.headerTimeLabel.textContent = (t.timeLabel && t.timeLabel[mode]) || '';
   }
   
   if (el.headerDaysLabel) {
-    const daysLabelMap = {
-      weekly: '周有效天',
-      monthly: '有效天数',
-      annually: '年有效天',
-      overall: '累计天数'
-    };
-    el.headerDaysLabel.textContent = daysLabelMap[mode] || '有效天数';
+    el.headerDaysLabel.textContent = (t.daysLabel && t.daysLabel[mode]) || '';
   }
 
   if (state.monthlyData) {
@@ -565,11 +705,14 @@ function renderHeaderStats() {
     const hours = Math.floor(totalSecs / 3600);
     const mins = Math.floor((totalSecs % 3600) / 60);
     el.headerTime.textContent = `${hours}h ${mins}m`;
-    el.headerDays.textContent = `${state.monthlyData.readDays || 0}天`;
+    
+    const isZh = lang === 'zh';
+    el.headerDays.textContent = isZh ? `${state.monthlyData.readDays || 0}天` : `${state.monthlyData.readDays || 0} days`;
   }
   
   if (state.notebooksData) {
-    el.headerNotes.textContent = `${state.notebooksData.totalNoteCount || 0}条`;
+    const isZh = lang === 'zh';
+    el.headerNotes.textContent = isZh ? `${state.notebooksData.totalNoteCount || 0}条` : `${state.notebooksData.totalNoteCount || 0} notes`;
   }
 }
 
@@ -579,37 +722,28 @@ function renderDashboard() {
   
   const d = state.monthlyData;
   const mode = state.statsMode || 'monthly';
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
+  const isZh = lang === 'zh';
   
   // Update dashboard stat card titles dynamically
   if (el.dashTotalTimeLabel) {
-    const totalTimeLabelMap = {
-      weekly: '本周阅读时间',
-      monthly: '本月阅读时间',
-      annually: '本年阅读时间',
-      overall: '累计阅读时间'
-    };
-    el.dashTotalTimeLabel.textContent = totalTimeLabelMap[mode] || '总阅读时间';
+    el.dashTotalTimeLabel.textContent = (t.totalTimeLabelMap && t.totalTimeLabelMap[mode]) || '';
   }
   
   if (el.dashReadDaysLabel) {
-    const readDaysLabelMap = {
-      weekly: '本周阅读天数',
-      monthly: '本月阅读天数',
-      annually: '本年阅读天数',
-      overall: '累计阅读天数'
-    };
-    el.dashReadDaysLabel.textContent = readDaysLabelMap[mode] || '累计阅读天数';
+    el.dashReadDaysLabel.textContent = (t.readDaysLabelMap && t.readDaysLabelMap[mode]) || '';
   }
   
   el.dashTotalTime.textContent = formatDuration(d.totalReadTime);
-  el.dashReadDays.textContent = `${d.readDays || 0} 天`;
+  el.dashReadDays.textContent = isZh ? `${d.readDays || 0} 天` : `${d.readDays || 0} days`;
   
   // Calculate average
   let avgSecs = d.dayAverageReadTime;
-  let avgSubtitle = "按本月自然日平均";
+  let avgSubtitle = t.avgSubtitleMap ? t.avgSubtitleMap.monthly : "";
   
   if (state.statsMode === 'weekly') {
-    avgSubtitle = "按本周自然日平均";
+    avgSubtitle = t.avgSubtitleMap ? t.avgSubtitleMap.weekly : "";
     if (avgSecs === undefined || avgSecs === null) {
       const now = new Date();
       const day = now.getDay();
@@ -617,14 +751,14 @@ function renderDashboard() {
       avgSecs = Math.floor((d.totalReadTime || 0) / elapsedDays);
     }
   } else if (state.statsMode === 'monthly') {
-    avgSubtitle = "按本月自然日平均";
+    avgSubtitle = t.avgSubtitleMap ? t.avgSubtitleMap.monthly : "";
     if (avgSecs === undefined || avgSecs === null) {
       const now = new Date();
       const elapsedDays = now.getDate();
       avgSecs = Math.floor((d.totalReadTime || 0) / elapsedDays);
     }
   } else if (state.statsMode === 'annually') {
-    avgSubtitle = "按本年自然日平均";
+    avgSubtitle = t.avgSubtitleMap ? t.avgSubtitleMap.annually : "";
     if (avgSecs === undefined || avgSecs === null) {
       const now = new Date();
       const startOfYear = new Date(now.getFullYear(), 0, 1);
@@ -632,19 +766,19 @@ function renderDashboard() {
       avgSecs = Math.floor((d.totalReadTime || 0) / elapsedDays);
     }
   } else if (state.statsMode === 'overall') {
-    avgSubtitle = "按注册以来自然日平均";
+    avgSubtitle = t.avgSubtitleMap ? t.avgSubtitleMap.overall_regist : "";
     if (avgSecs === undefined || avgSecs === null) {
       if (d.registTime) {
         const elapsedDays = Math.max(1, Math.ceil((Date.now() / 1000 - d.registTime) / 86400));
         avgSecs = Math.floor((d.totalReadTime || 0) / elapsedDays);
       } else {
-        avgSubtitle = "按有效阅读天数平均";
+        avgSubtitle = t.avgSubtitleMap ? t.avgSubtitleMap.overall_valid : "";
         avgSecs = Math.floor((d.totalReadTime || 0) / Math.max(1, d.readDays || 1));
       }
     }
   }
 
-  el.dashAvgTime.textContent = `${Math.round((avgSecs || 0) / 60)} 分钟`;
+  el.dashAvgTime.textContent = isZh ? `${Math.round((avgSecs || 0) / 60)} 分钟` : `${Math.round((avgSecs || 0) / 60)} mins`;
   if (el.dashAvgTimeSubtitle) {
     el.dashAvgTimeSubtitle.textContent = avgSubtitle;
   }
@@ -653,23 +787,26 @@ function renderDashboard() {
   if (d.compare !== undefined && d.compare !== null) {
     const compVal = d.compare * 100;
     if (compVal > 0) {
-      el.dashCompareTime.innerHTML = `较上周/周期 <span class="trend-up"><i data-lucide="trending-up" style="display:inline-block;width:12px;height:12px;vertical-align:middle;"></i> 增加 ${compVal.toFixed(1)}%</span>`;
+      const tmpl = t.compareUpDashboard || '';
+      el.dashCompareTime.innerHTML = tmpl.replace('{percent}', compVal.toFixed(1));
     } else if (compVal < 0) {
-      el.dashCompareTime.innerHTML = `较上周/周期 <span class="trend-down"><i data-lucide="trending-down" style="display:inline-block;width:12px;height:12px;vertical-align:middle;"></i> 减少 ${Math.abs(compVal).toFixed(1)}%</span>`;
+      const tmpl = t.compareDownDashboard || '';
+      el.dashCompareTime.innerHTML = tmpl.replace('{percent}', Math.abs(compVal).toFixed(1));
     } else {
-      el.dashCompareTime.textContent = `较上周/周期持平`;
+      el.dashCompareTime.textContent = t.compareFlatDashboard || '';
     }
   } else {
-    el.dashCompareTime.textContent = `首个记录周期或上期无数据`;
+    el.dashCompareTime.textContent = t.compareNoData || '';
   }
   
   // Habits
-  el.habitTimeWord.textContent = d.preferTimeWord || "数据分析积累中...";
-  el.habitCategoryWord.textContent = d.preferCategoryWord || "数据分析积累中...";
+  el.habitTimeWord.textContent = d.preferTimeWord || (t.noHabitData || "");
+  el.habitCategoryWord.textContent = d.preferCategoryWord || (t.noHabitData || "");
   if (d.readRate !== undefined) {
-    el.habitReadRate.textContent = `电子书占比 ${d.readRate}% / 听书占比 ${(100 - d.readRate)}%`;
+    const tmpl = t.readRateText || '';
+    el.habitReadRate.textContent = tmpl.replace('{readRate}', d.readRate).replace('{audioRate}', 100 - d.readRate);
   } else {
-    el.habitReadRate.textContent = "仅文字阅读或听书比例不足";
+    el.habitReadRate.textContent = t.readRateLow || "";
   }
 
   renderDailyActivityChart(d.readTimes);
@@ -679,17 +816,21 @@ function renderDashboard() {
 
 // Bar chart
 function renderDailyActivityChart(readTimes) {
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
+  const isZh = lang === 'zh';
+  
   if (!readTimes || Object.keys(readTimes).length === 0) {
     el.barChartContainer.innerHTML = `
       <div class="empty-state">
         <i data-lucide="bar-chart-3"></i>
-        <p>无阅读时长明细数据</p>
+        <p>${t.noData || '无阅读时长明细数据'}</p>
       </div>
     `;
     return;
   }
   
-  const daysOfWeek = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const daysOfWeek = t.daysOfWeek || ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   const dailyData = Object.entries(readTimes).map(([ts, val]) => {
     const date = new Date(parseInt(ts) * 1000);
     let label = "";
@@ -699,13 +840,13 @@ function renderDailyActivityChart(readTimes) {
       label = daysOfWeek[date.getDay()];
       shortLabel = label;
     } else if (state.statsMode === 'monthly') {
-      label = `${date.getMonth() + 1}月${date.getDate()}日`;
+      label = isZh ? `${date.getMonth() + 1}月${date.getDate()}日` : `${date.getMonth() + 1}/${date.getDate()}`;
       shortLabel = `${date.getDate()}`;
     } else if (state.statsMode === 'annually') {
-      label = `${date.getFullYear()}年${date.getMonth() + 1}月`;
-      shortLabel = `${date.getMonth() + 1}月`;
+      label = isZh ? `${date.getFullYear()}年${date.getMonth() + 1}月` : `${date.getFullYear()}/${date.getMonth() + 1}`;
+      shortLabel = isZh ? `${date.getMonth() + 1}月` : `${date.getMonth() + 1}`;
     } else {
-      label = `${date.getFullYear()}年`;
+      label = isZh ? `${date.getFullYear()}年` : `${date.getFullYear()}`;
       shortLabel = label;
     }
     
@@ -718,7 +859,7 @@ function renderDailyActivityChart(readTimes) {
   
   dailyData.forEach((day, i) => {
     const heightPercent = (day.value / maxVal) * 100;
-    const readableTime = day.value > 0 ? formatDuration(day.value) : "未阅读";
+    const readableTime = day.value > 0 ? formatDuration(day.value) : (t.notRead || "未阅读");
     
     chartHtml += `
       <div class="chart-bar-col" style="animation-delay: ${i * 20}ms">
@@ -735,11 +876,14 @@ function renderDailyActivityChart(readTimes) {
 
 // Category preferences
 function renderCategoryPreferences(preferCategory) {
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
+  
   if (!preferCategory || preferCategory.length === 0) {
     el.preferCategoryContainer.innerHTML = `
       <div class="empty-state">
         <i data-lucide="pie-chart"></i>
-        <p>无品类偏好数据</p>
+        <p>${t.noCategory || '无品类偏好数据'}</p>
       </div>
     `;
     return;
@@ -752,12 +896,17 @@ function renderCategoryPreferences(preferCategory) {
   sorted.slice(0, 5).forEach(cat => {
     const progressPercent = cat.val <= 1 ? (cat.val * 100).toFixed(0) : cat.val;
     const timeText = formatDuration(cat.readingTime);
+    let categoryName = cat.categoryTitle;
+    if (categoryName === '有声书') {
+      categoryName = t.audiobook || '有声书';
+    }
+    const countSuffix = (t.catBooksCount || "({count}本)").replace('{count}', cat.readingCount);
     
     prefHtml += `
       <div class="pref-item">
         <div class="pref-header">
-          <span class="pref-title">${cat.categoryTitle}</span>
-          <span class="pref-value">${timeText} (${cat.readingCount}本)</span>
+          <span class="pref-title">${categoryName}</span>
+          <span class="pref-value">${timeText} ${countSuffix}</span>
         </div>
         <div class="pref-bar-bg">
           <div class="pref-bar-fill" style="width: ${progressPercent}%;"></div>
@@ -772,11 +921,14 @@ function renderCategoryPreferences(preferCategory) {
 
 // Ranking list
 function renderLongestReads(readLongest) {
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
+  
   if (!readLongest || readLongest.length === 0) {
     el.dashRankList.innerHTML = `
       <div class="empty-state">
         <i data-lucide="trophy"></i>
-        <p>无书籍阅读排行</p>
+        <p>${t.noRank || '无书籍阅读排行'}</p>
       </div>
     `;
     return;
@@ -792,6 +944,7 @@ function renderLongestReads(readLongest) {
     const id = isAlbum ? item.albumInfo.albumId : item.book.bookId;
     const durationText = formatDuration(item.readTime);
     const tags = item.tags && item.tags.length > 0 ? `<span class="badge" style="margin-left:6px; font-size:9px; padding:1px 5px;">${item.tags[0]}</span>` : '';
+    const albumPrefix = t.audiobookPrefix || '[有声书] ';
     
     rankHtml += `
       <div class="rank-item" onclick="openBookDetails('${id}', ${isAlbum})">
@@ -799,7 +952,7 @@ function renderLongestReads(readLongest) {
         <img class="rank-cover" src="${cover}" alt="${title}" onerror="this.src='https://res.weread.qq.com/wrepub/CB_9bJBOnBOBEl972B71F03W5Ao_parsecover'">
         <div class="rank-info">
           <div class="rank-title">${title} ${tags}</div>
-          <div class="rank-author">${isAlbum ? '[有声书] ' : ''}${author}</div>
+          <div class="rank-author">${isAlbum ? albumPrefix : ''}${author}</div>
         </div>
         <div class="rank-time">${durationText}</div>
       </div>
@@ -812,6 +965,8 @@ function renderLongestReads(readLongest) {
 // 3. Bookshelf
 function renderBookshelf() {
   if (!state.shelfData) return;
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
   
   const searchVal = el.shelfSearchInput.value.toLowerCase().trim();
   const filterBtn = document.querySelector('.filter-btn.active');
@@ -845,7 +1000,7 @@ function renderBookshelf() {
       title: b.title,
       author: b.author,
       cover: b.cover,
-      category: b.category || "未分类",
+      category: b.category || (t.uncategorized || "未分类"),
       finishReading: b.finishReading === 1,
       secret: b.secret === 1,
       readUpdateTime: b.readUpdateTime || 0,
@@ -862,7 +1017,7 @@ function renderBookshelf() {
       title: info.name,
       author: info.authorName,
       cover: info.cover,
-      category: "有声书",
+      category: t.audiobook || "有声书",
       finishReading: info.finish === 1,
       secret: extra.secret === 1,
       readUpdateTime: extra.lectureReadUpdateTime || 0,
@@ -896,7 +1051,7 @@ function renderBookshelf() {
     el.bookshelfGrid.innerHTML = `
       <div class="empty-state" style="grid-column: 1 / -1; padding: 60px;">
         <i data-lucide="library-big"></i>
-        <p>未找到符合筛选条件的书籍</p>
+        <p>${t.bookshelfEmpty || '未找到符合筛选条件的书籍'}</p>
       </div>
     `;
     lucide.createIcons();
@@ -911,16 +1066,16 @@ function renderBookshelf() {
         <div class="book-card-cover-wrapper">
           <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg, var(--blue-700), var(--blue-900)); color:var(--blue-200);">
             <i data-lucide="bookmark" style="width:36px; height:36px; margin-bottom:8px;"></i>
-            <span style="font-size:11px; font-weight:600; color:var(--blue-300)">收藏夹</span>
+            <span style="font-size:11px; font-weight:600; color:var(--blue-300)">${t.mpCategory || '文章收藏'}</span>
           </div>
           <div class="book-card-badge"><i data-lucide="lock"></i></div>
         </div>
         <div class="book-card-info">
-          <div class="book-card-title">公众号文章收藏</div>
-          <div class="book-card-author">微信公众号文章</div>
+          <div class="book-card-title">${t.mpTitle || '公众号文章收藏'}</div>
+          <div class="book-card-author">${t.mpAuthor || '微信公众号文章'}</div>
           <div class="book-card-footer">
-            <span class="book-card-category">文章收藏</span>
-            <span class="book-card-percentage">私密</span>
+            <span class="book-card-category">${t.mpCategory || '文章收藏'}</span>
+            <span class="book-card-percentage">${t.mpSecret || '私密'}</span>
           </div>
         </div>
       </div>
@@ -930,9 +1085,10 @@ function renderBookshelf() {
   items.forEach(item => {
     const topBadge = item.isTop ? `<div class="book-card-badge" style="left:8px; right:auto; background:var(--primary); color:var(--text-inverted); border:none;"><i data-lucide="pin"></i></div>` : '';
     const secretBadge = item.secret ? `<div class="book-card-badge" style="right:8px; left:auto;"><i data-lucide="lock"></i></div>` : '';
-    const progressText = item.finishReading ? "已读完" : "在读";
+    const progressText = item.finishReading ? (t.filterFinished || "已读完") : (t.filterReading || "在读");
     const progressColor = item.finishReading ? "var(--text-tertiary)" : "var(--primary)";
     const progressPercent = item.finishReading ? 100 : 0;
+    const albumPrefix = t.audiobookPrefix || '[有声书] ';
     
     gridHtml += `
       <div class="book-card" onclick="openBookDetails('${item.id}', ${item.isAlbum})">
@@ -946,7 +1102,7 @@ function renderBookshelf() {
         </div>
         <div class="book-card-info">
           <div class="book-card-title">${item.title}</div>
-          <div class="book-card-author">${item.isAlbum ? '[有声书] ' : ''}${item.author}</div>
+          <div class="book-card-author">${item.isAlbum ? albumPrefix : ''}${item.author}</div>
           <div class="book-card-footer">
             <span class="book-card-category">${item.category.split('-')[0]}</span>
             <span class="book-card-percentage" style="color: ${progressColor}">${progressText}</span>
@@ -963,6 +1119,8 @@ function renderBookshelf() {
 // 4. Notebooks
 function renderNotebooksList() {
   if (!state.notebooksData) return;
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
   
   const books = state.notebooksData.books || [];
   el.notesTotalBooks.textContent = state.notebooksData.totalBookCount || books.length;
@@ -971,7 +1129,7 @@ function renderNotebooksList() {
     el.notebooksGrid.innerHTML = `
       <div class="empty-state" style="grid-column: 1 / -1; padding: 60px;">
         <i data-lucide="notebook-pen"></i>
-        <p>暂无读书笔记数据</p>
+        <p>${t.notesEmpty || '暂无读书笔记数据'}</p>
       </div>
     `;
     return;
@@ -982,6 +1140,9 @@ function renderNotebooksList() {
   books.forEach(item => {
     const book = item.book || {};
     const totalCount = (item.reviewCount || 0) + (item.noteCount || 0) + (item.bookmarkCount || 0);
+    const notesSuffix = t.notebookCountSuffix || ' 笔记';
+    const highlightsSuffix = t.highlightCountSuffix || ' 划线';
+    const thoughtsSuffix = t.thoughtCountSuffix || ' 想法';
     
     gridHtml += `
       <div class="glass-card notebook-card" onclick="openNotesViewer('${item.bookId}', '${book.title.replace(/'/g, "\\'")}', '${book.author.replace(/'/g, "\\'")}')">
@@ -995,15 +1156,15 @@ function renderNotebooksList() {
           <div class="notebook-meta-stats">
             <span class="notebook-meta-badge total">
               <i data-lucide="pen-line"></i>
-              <span>${totalCount}笔记</span>
+              <span>${totalCount}${notesSuffix}</span>
             </span>
-            <span class="notebook-meta-badge" title="高亮划线数">
+            <span class="notebook-meta-badge highlight" title="高亮划线数">
               <i data-lucide="highlighter"></i>
-              <span>${item.noteCount || 0}</span>
+              <span>${item.noteCount || 0}${highlightsSuffix}</span>
             </span>
-            <span class="notebook-meta-badge" title="想法点评数">
+            <span class="notebook-meta-badge review" title="想法点评数">
               <i data-lucide="message-circle"></i>
-              <span>${item.reviewCount || 0}</span>
+              <span>${item.reviewCount || 0}${thoughtsSuffix}</span>
             </span>
           </div>
         </div>
@@ -1018,6 +1179,9 @@ function renderNotebooksList() {
 // 5. Recommendations
 function renderRecommendations() {
   if (!state.recommendData || !state.recommendData.books) return;
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
+  const isZh = lang === 'zh';
   
   const books = state.recommendData.books;
   
@@ -1025,7 +1189,7 @@ function renderRecommendations() {
     el.recommendGrid.innerHTML = `
       <div class="empty-state" style="grid-column: 1 / -1; padding: 60px;">
         <i data-lucide="wand-sparkles"></i>
-        <p>未加载到推荐好书</p>
+        <p>${t.noRecommend || '未加载到推荐好书'}</p>
       </div>
     `;
     return;
@@ -1034,8 +1198,9 @@ function renderRecommendations() {
   let gridHtml = '';
   
   books.forEach(b => {
-    const ratingText = b.newRating ? `${Math.round(b.newRating)}% 推荐值` : '暂无评分';
+    const ratingText = b.newRating ? (t.ratingText || '{rating}% 推荐值').replace('{rating}', Math.round(b.newRating)) : (t.noRating || '暂无评分');
     const reasonText = b.reason ? `<div style="font-size:11px; color:var(--primary); margin-top:6px; font-weight:600;">✦ ${b.reason}</div>` : '';
+    const introText = b.intro || (isZh ? "暂无书籍简介。" : "No description available.");
     
     gridHtml += `
       <div class="glass-card recommend-item-card" onclick="openBookDetails('${b.bookId}', false)">
@@ -1048,7 +1213,7 @@ function renderRecommendations() {
             ${reasonText}
           </div>
         </div>
-        <p class="recommend-intro">${b.intro || "暂无书籍简介。"}</p>
+        <p class="recommend-intro">${introText}</p>
       </div>
     `;
   });
@@ -1061,13 +1226,16 @@ function renderRecommendations() {
 
 async function openBookDetails(bookId, isAlbum) {
   showTopBar(true);
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
+  
   try {
     if (isAlbum) {
       const album = state.shelfData.albums.find(a => a.albumInfo.albumId === bookId);
       if (album) {
         renderAlbumDetails(album.albumInfo, album.albumInfoExtra);
       } else {
-        showToast("未找到有声书信息", "error");
+        showToast(t.missingAudioInfo || "未找到有声书信息", "error");
       }
       return;
     }
@@ -1082,7 +1250,7 @@ async function openBookDetails(bookId, isAlbum) {
       state.currentBookProgress = progress;
       renderBookDetailsModal(info, progress);
     } else {
-      showToast("获取书籍详情失败", "error");
+      showToast(t.detailsFetchFailed || "获取书籍详情失败", "error");
     }
   } catch (err) {
     console.error("Error fetching book detail:", err);
@@ -1092,62 +1260,82 @@ async function openBookDetails(bookId, isAlbum) {
 }
 
 function renderBookDetailsModal(info, progress) {
-  const ratingText = info.newRating ? `${info.newRating}% 好评率 (${info.newRatingCount || 0}人评分)` : '暂无评分';
-  const wordCountStr = info.wordCount ? `${Math.round(info.wordCount / 10000)} 万字` : '未统计';
-  const pubText = info.publisher ? `${info.publisher} / ${info.publishTime || "未知"}` : '未知出版社';
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
+  const isZh = lang === 'zh';
   
-  let progressText = '未开始';
+  const ratingText = info.newRating 
+    ? (t.ratingTextDetailed || "{rating}% 好评率 ({count}人评分)").replace('{rating}', info.newRating).replace('{count}', info.newRatingCount || 0) 
+    : (t.noRating || '暂无评分');
+  const wordCountStr = info.wordCount 
+    ? (t.wordCountText || "{count} 万字").replace('{count}', isZh ? Math.round(info.wordCount / 10000) : Math.round(info.wordCount / 1000).toLocaleString()) 
+    : (t.wordCountEmpty || '未统计');
+  const pubText = info.publisher 
+    ? (t.pubTextFormat || "{publisher} / {time}").replace('{publisher}', info.publisher).replace('{time}', info.publishTime || (t.unknownPublisher || "未知")) 
+    : (t.unknownPublisher || '未知出版社');
+  
+  let progressText = t.progressNotStarted || '未开始';
   let progressPercent = 0;
-  let totalReadTimeText = '0 小时 0 分钟';
+  let totalReadTimeText = isZh ? '0 小时 0 分钟' : '0 mins';
   let finishTimeText = '';
   
   if (progress && progress.book) {
     const p = progress.book;
     progressPercent = p.progress || 0;
-    progressText = `${progressPercent}%`;
+    progressText = progressPercent === 100 ? (t.progressFinished || "已读完") : (t.progressPercent || "{percent}%").replace('{percent}', progressPercent);
     totalReadTimeText = formatDuration(p.recordReadingTime);
     
     if (progressPercent === 100 && p.finishTime) {
-      progressText = "已读完";
-      finishTimeText = `<p class="book-details-desc-text"><strong>读完时间：</strong>${formatDate(p.finishTime)}</p>`;
+      const finishLabel = t.finishTimeLabel || '读完时间：';
+      finishTimeText = `<p class="book-details-desc-text"><strong>${finishLabel}</strong>${formatDate(p.finishTime)}</p>`;
     }
   }
+  
+  const pubLabel = t.publisherLabel || '出版社：';
+  const progLabel = t.progressLabel || '阅读进度：';
+  const totalTimeLabel = t.totalTimeLabel || '累计时长：';
+  const isbnLabel = t.isbnLabel || 'ISBN：';
+  const isbnVal = info.isbn || (t.isbnNone || '无');
+  const introTitle = t.introTitle || '图书简介';
+  const introText = info.intro || (isZh ? "暂无简介。" : "No description available.");
+  const openInAppText = t.openInApp || '在微信读书 App 中打开';
+  const closeText = t.close || '关闭';
   
   let modalHtml = `
     <div class="book-details-modal-wrapper">
       <img class="book-details-cover" src="${info.cover}" alt="${info.title}" onerror="this.src='https://res.weread.qq.com/wrepub/CB_9bJBOnBOBEl972B71F03W5Ao_parsecover'">
       <div class="book-details-info">
         <h2 class="book-details-title">${info.title}</h2>
-        <p class="book-details-author">${info.author} ${info.translator ? `(译者: ${info.translator})` : ''}</p>
+        <p class="book-details-author">${info.author} ${info.translator ? `(${isZh ? '译者' : 'Translator'}: ${info.translator})` : ''}</p>
         
         <div class="book-details-meta">
           <span class="badge" style="background-color: var(--primary-ghost); color: var(--primary); border-color: var(--primary-ring)">${ratingText}</span>
-          <span class="badge">${info.category || "文学"}</span>
+          <span class="badge">${info.category || (isZh ? "文学" : "Literature")}</span>
           <span class="badge">${wordCountStr}</span>
         </div>
         
         <div style="margin-top: 10px;">
-          <p class="book-details-desc-text"><strong>出版社：</strong>${pubText}</p>
-          <p class="book-details-desc-text"><strong>阅读进度：</strong><span style="color:var(--primary); font-weight:600;">${progressText}</span></p>
-          <p class="book-details-desc-text"><strong>累计时长：</strong>${totalReadTimeText}</p>
+          <p class="book-details-desc-text"><strong>${pubLabel}</strong>${pubText}</p>
+          <p class="book-details-desc-text"><strong>${progLabel}</strong><span style="color:var(--primary); font-weight:600;">${progressText}</span></p>
+          <p class="book-details-desc-text"><strong>${totalTimeLabel}</strong>${totalReadTimeText}</p>
           ${finishTimeText}
-          <p class="book-details-desc-text"><strong>ISBN：</strong>${info.isbn || '无'}</p>
+          <p class="book-details-desc-text"><strong>${isbnLabel}</strong>${isbnVal}</p>
         </div>
       </div>
     </div>
     
     <div class="book-details-desc-box">
-      <h4 class="book-details-desc-title">图书简介</h4>
-      <p class="book-details-desc-text">${info.intro || "暂无简介。"}</p>
+      <h4 class="book-details-desc-title">${introTitle}</h4>
+      <p class="book-details-desc-text">${introText}</p>
     </div>
     
     <div class="book-details-action-bar">
       <a class="btn btn-primary" href="weread://reading?bId=${info.bookId}">
         <i data-lucide="book-open-text"></i>
-        <span>在微信读书 App 中打开</span>
+        <span>${openInAppText}</span>
       </a>
       <button class="btn btn-secondary" onclick="closeBookDetailModal()">
-        <span>关闭</span>
+        <span>${closeText}</span>
       </button>
     </div>
   `;
@@ -1158,44 +1346,58 @@ function renderBookDetailsModal(info, progress) {
 }
 
 function renderAlbumDetails(info, extra) {
-  const countStr = info.trackCount ? `${info.trackCount}集 (${info.finishStatus || "连载中"})` : '未统计';
-  let progressText = '在听';
-  if (info.finish === 1) progressText = '已听完';
-  const secretText = extra.secret === 1 ? '私密收听' : '公开收听';
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
+  const isZh = lang === 'zh';
+  
+  const statusText = info.finishStatus === '已完结' ? (t.finishStatusFinished || '已完结') : (info.finishStatus === '连载中' ? (t.finishStatusOngoing || '连载中') : (info.finishStatus || '连载中'));
+  const countStr = info.trackCount ? (t.trackCountText || "{count}集 ({status})").replace('{count}', info.trackCount).replace('{status}', statusText) : (t.trackCountEmpty || '未统计');
+  const progressText = info.finish === 1 ? (t.listeningStatusFinished || '已听完') : (t.listeningStatusListening || '在听');
+  const secretText = extra.secret === 1 ? (t.secretListening || '私密收听') : (t.publicListening || '公开收听');
+  const audiobookText = t.audiobook || '有声书';
+  
+  const hostLabel = t.hostLabel || '主播/演播：';
+  const listenStatusLabel = t.listenStatusLabel || '收听状态：';
+  const finishStatusLabel = t.finishStatusLabel || '完结状态：';
+  const updateTimeLabel = t.updateTimeLabel || '最新更新：';
+  const albumIntroTitle = t.albumIntroTitle || '专辑简介';
+  const introText = info.intro || (isZh ? "暂无简介。" : "No description available.");
+  const listenInAppText = t.listenInApp || '在微信读书收听';
+  const closeText = t.close || '关闭';
   
   let modalHtml = `
     <div class="book-details-modal-wrapper">
       <img class="book-details-cover" src="${info.cover}" alt="${info.name}" onerror="this.src='https://res.weread.qq.com/wrepub/CB_9bJBOnBOBEl972B71F03W5Ao_parsecover'">
       <div class="book-details-info">
         <h2 class="book-details-title">${info.name}</h2>
-        <p class="book-details-author">主播/演播：${info.authorName || "微信读书"}</p>
+        <p class="book-details-author">${hostLabel}${info.authorName || (isZh ? "微信读书" : "WeRead")}</p>
         
         <div class="book-details-meta">
-          <span class="badge" style="background-color: var(--primary-ghost); color: var(--primary); border-color: var(--primary-ring)">[有声书]</span>
+          <span class="badge" style="background-color: var(--primary-ghost); color: var(--primary); border-color: var(--primary-ring)">[${audiobookText}]</span>
           <span class="badge">${countStr}</span>
           <span class="badge">${secretText}</span>
         </div>
         
         <div style="margin-top: 10px;">
-          <p class="book-details-desc-text"><strong>收听状态：</strong><span style="color:var(--primary); font-weight:600;">${progressText}</span></p>
-          <p class="book-details-desc-text"><strong>完结状态：</strong>${info.finishStatus || "连载中"}</p>
-          <p class="book-details-desc-text"><strong>最新更新：</strong>${formatDate(info.updateTime)}</p>
+          <p class="book-details-desc-text"><strong>${listenStatusLabel}</strong><span style="color:var(--primary); font-weight:600;">${progressText}</span></p>
+          <p class="book-details-desc-text"><strong>${finishStatusLabel}</strong>${statusText}</p>
+          <p class="book-details-desc-text"><strong>${updateTimeLabel}</strong>${formatDate(info.updateTime)}</p>
         </div>
       </div>
     </div>
     
     <div class="book-details-desc-box">
-      <h4 class="book-details-desc-title">专辑简介</h4>
-      <p class="book-details-desc-text">${info.intro || "暂无简介。"}</p>
+      <h4 class="book-details-desc-title">${albumIntroTitle}</h4>
+      <p class="book-details-desc-text">${introText}</p>
     </div>
     
     <div class="book-details-action-bar">
       <a class="btn btn-primary" href="weread://reading?bId=${info.albumId}">
         <i data-lucide="headphones"></i>
-        <span>在微信读书收听</span>
+        <span>${listenInAppText}</span>
       </a>
       <button class="btn btn-secondary" onclick="closeBookDetailModal()">
-        <span>关闭</span>
+        <span>${closeText}</span>
       </button>
     </div>
   `;
@@ -1213,6 +1415,8 @@ function closeBookDetailModal() {
 
 async function openNotesViewer(bookId, title, author) {
   showTopBar(true);
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
   
   el.notesViewerTitle.textContent = title;
   el.notesViewerAuthor.textContent = author;
@@ -1227,17 +1431,21 @@ async function openNotesViewer(bookId, title, author) {
       renderNotesList(bookId, bookmarks, reviews);
       el.notesViewerModal.classList.add('active');
     } else {
-      showToast("无法加载笔记内容", "error");
+      showToast(t.notesFetchFailed || "无法加载笔记内容", "error");
     }
   } catch (error) {
     console.error("Error loading book notes:", error);
-    showToast("获取笔记数据失败", "error");
+    showToast(t.notesDataFetchFailed || "获取笔记数据失败", "error");
   } finally {
     showTopBar(false);
   }
 }
 
 function renderNotesList(bookId, bookmarks, reviewsData) {
+  const lang = settingsState.language;
+  const t = i18n[lang] || {};
+  const isZh = lang === 'zh';
+  
   const underlines = (bookmarks && bookmarks.updated) || [];
   const thoughts = (reviewsData && reviewsData.reviews) || [];
   const chapters = (bookmarks && bookmarks.chapters) || [];
@@ -1246,7 +1454,7 @@ function renderNotesList(bookId, bookmarks, reviewsData) {
     el.notesViewerBody.innerHTML = `
       <div class="empty-state" style="padding: 40px;">
         <i data-lucide="message-circle"></i>
-        <p>这本书没有记录任何划线或个人想法。</p>
+        <p>${t.emptyChapterNotes || '这本书没有记录任何划线或个人想法。'}</p>
       </div>
     `;
     lucide.createIcons();
@@ -1262,8 +1470,9 @@ function renderNotesList(bookId, bookmarks, reviewsData) {
   
   const getChapterNode = (uid, defaultTitle) => {
     if (!chaptersGroup[uid]) {
+      const fallbackTitle = (t.chapterFallback || "章节 {chUid}").replace('{chUid}', uid);
       chaptersGroup[uid] = {
-        title: chapterMap[uid] || defaultTitle || `章节 UID: ${uid}`,
+        title: chapterMap[uid] || defaultTitle || fallbackTitle,
         notes: []
       };
     }
@@ -1272,7 +1481,8 @@ function renderNotesList(bookId, bookmarks, reviewsData) {
   
   underlines.forEach(line => {
     const chUid = line.chapterUid;
-    const node = getChapterNode(chUid, `章节 ${chUid}`);
+    const fallbackTitle = (t.chapterFallback || "章节 {chUid}").replace('{chUid}', chUid);
+    const node = getChapterNode(chUid, fallbackTitle);
     node.notes.push({
       id: line.bookmarkId,
       type: 'underline',
@@ -1305,7 +1515,7 @@ function renderNotesList(bookId, bookmarks, reviewsData) {
     }
     
     const finalUid = chUid || 'book_review';
-    const finalTitle = chName || (chUid ? `章节 ${chUid}` : '整本书评 / 个人点评');
+    const finalTitle = chName || (chUid ? (t.chapterFallback || "章节 {chUid}").replace('{chUid}', chUid) : (t.overallReviewTitle || '整本书评 / 个人点评'));
     const node = getChapterNode(finalUid, finalTitle);
     
     node.notes.push({
@@ -1324,10 +1534,16 @@ function renderNotesList(bookId, bookmarks, reviewsData) {
     return { uid, title: chData.title, notes: chData.notes };
   });
   
+  const sortRank = (uid) => {
+    if (uid === 'book_review') return -1;
+    const parsed = parseInt(uid);
+    return isNaN(parsed) ? 999999 : parsed;
+  };
+  
   sortedChapters.sort((a, b) => {
     if (a.uid === 'book_review') return -1;
     if (b.uid === 'book_review') return 1;
-    return parseInt(a.uid) - parseInt(b.uid);
+    return sortRank(a.uid) - sortRank(b.uid);
   });
   
   let notesHtml = '';
@@ -1354,36 +1570,43 @@ function renderNotesList(bookId, bookmarks, reviewsData) {
         }
         
         const deepLink = `weread://bestbookmark?bookId=${bookId}&chapterUid=${ch.uid}&rangeStart=${rangeStart}&rangeEnd=${rangeEnd}`;
+        const myThoughtLabel = t.myThoughtPrefix || '我的想法：';
+        const createTimeLabel = t.createTimePrefix || '创建时间：';
+        const locateText = t.locateInApp || '在 App 中定位';
         
         notesHtml += `
           <div class="note-item-box">
             <p class="note-mark-text">${note.text}</p>
             ${note.thought ? `
               <div class="note-thought-text">
-                <strong>我的想法：</strong>${note.thought.content}
+                <strong>${myThoughtLabel}</strong>${note.thought.content}
               </div>
             ` : ''}
             <div class="note-meta">
-              <span>创建时间：${formattedDate}</span>
+              <span>${createTimeLabel}${formattedDate}</span>
               <a class="note-deep-link" href="${deepLink}">
                 <i data-lucide="external-link" style="width:10px;height:10px;"></i>
-                在 App 中定位
+                ${locateText}
               </a>
             </div>
           </div>
         `;
       } else if (note.type === 'thought') {
-        const starRating = note.star && note.star > 0 ? ` 评分: ${'★'.repeat(note.star)}` : '';
-        const finishTag = note.isFinish ? ` <span class="badge" style="font-size:9px; padding:1px 5px; margin-left:4px;">读完点评</span>` : '';
+        const starText = t.thoughtTypeStar || ' 评分: ';
+        const starRating = note.star && note.star > 0 ? `${starText}${'★'.repeat(note.star)}` : '';
+        const finishText = t.thoughtTypeFinish || '读完点评';
+        const finishTag = note.isFinish ? ` <span class="badge" style="font-size:9px; padding:1px 5px; margin-left:4px;">${finishText}</span>` : '';
+        const reviewTitle = t.thoughtTypeReview || '想法/书评';
+        const createTimeLabel = t.createTimePrefix || '创建时间：';
         
         notesHtml += `
           <div class="note-item-box" style="border-left-color: var(--accent)">
             <div class="note-thought-text" style="background:transparent; border:none; padding:0;">
-              <strong>想法/书评${starRating}${finishTag}：</strong>
+              <strong>${reviewTitle}${starRating}${finishTag}：</strong>
               <p style="margin-top:6px; color:var(--text-primary); font-style:normal">${note.text}</p>
             </div>
             <div class="note-meta">
-              <span>创建时间：${formattedDate}</span>
+              <span>${createTimeLabel}${formattedDate}</span>
             </div>
           </div>
         `;
@@ -1404,14 +1627,15 @@ function closeNotesViewerModal() {
 // ========================== UTILITIES ==========================
 
 function formatDuration(seconds) {
-  if (!seconds || seconds <= 0) return "0 分钟";
+  const isZh = settingsState.language === 'zh';
+  if (!seconds || seconds <= 0) return isZh ? "0 分钟" : "0 mins";
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   
   if (hours > 0) {
-    return `${hours} 小时 ${minutes} 分钟`;
+    return isZh ? `${hours} 小时 ${minutes} 分钟` : `${hours}h ${minutes}m`;
   }
-  return `${minutes} 分钟`;
+  return isZh ? `${minutes} 分钟` : `${minutes} mins`;
 }
 
 function formatDate(timestamp) {

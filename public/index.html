@@ -19,6 +19,7 @@
   <link rel="shortcut icon" href="wechat-read.ico" type="image/x-icon">
 
   <!-- Stylesheet -->
+  <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -32,43 +33,33 @@
     <aside class="sidebar">
       <div class="sidebar-brand">
         <img src="wechat-read.png" alt="WeRead" class="brand-logo-img">
-        <span class="brand-name">WeRead</span>
+        <span class="brand-name" data-i18n="brandName">微信读书</span>
       </div>
 
       <nav class="sidebar-menu">
         <button class="menu-item active" data-tab="dashboard">
           <i data-lucide="layout-dashboard"></i>
-          <span>阅读大盘</span>
+          <span data-i18n="menuDashboard">阅读大盘</span>
         </button>
         <button class="menu-item" data-tab="bookshelf">
           <i data-lucide="library-big"></i>
-          <span>我的书架</span>
+          <span data-i18n="menuBookshelf">我的书架</span>
         </button>
         <button class="menu-item" data-tab="notes">
           <i data-lucide="notebook-pen"></i>
-          <span>阅读笔记</span>
+          <span data-i18n="menuNotes">阅读笔记</span>
         </button>
         <button class="menu-item" data-tab="recommend">
           <i data-lucide="sparkles"></i>
-          <span>发现好书</span>
+          <span data-i18n="menuDiscover">发现好书</span>
         </button>
       </nav>
 
       <div class="sidebar-footer">
-        <div class="user-profile-wrapper">
-          <div class="user-profile">
-            <div class="user-avatar" id="user-avatar-placeholder">
-              <i data-lucide="circle-user-round"></i>
-            </div>
-            <div class="user-info">
-              <div class="user-name" id="user-display-name">WeRead Reader</div>
-              <div class="user-status"><span class="status-dot"></span>在线</div>
-            </div>
-          </div>
-          <button class="icon-btn settings-trigger-btn" id="open-settings-btn" title="系统设置">
-            <i data-lucide="settings"></i>
-          </button>
-        </div>
+        <button class="menu-item settings-footer-btn" id="open-settings-btn" title="系统设置">
+          <i data-lucide="settings"></i>
+          <span data-i18n="menuSettings">系统设置</span>
+        </button>
       </div>
     </aside>
 
@@ -220,14 +211,14 @@
           <div class="shelf-controls">
             <div class="search-box">
               <i data-lucide="search"></i>
-              <input type="text" id="shelf-search-input" placeholder="搜索书名或作者...">
+              <input type="text" id="shelf-search-input" placeholder="搜索书名或作者..." data-i18n-placeholder="searchPlaceholder">
             </div>
 
             <div class="filter-tabs">
-              <button class="filter-btn active" data-filter="all">全部 <span class="filter-count" id="count-all">0</span></button>
-              <button class="filter-btn" data-filter="in-progress">在读 <span class="filter-count" id="count-reading">0</span></button>
-              <button class="filter-btn" data-filter="finished">已读完 <span class="filter-count" id="count-finished">0</span></button>
-              <button class="filter-btn" data-filter="secret">私密 <span class="filter-count" id="count-secret">0</span></button>
+              <button class="filter-btn active" data-filter="all"><span data-i18n="filterAll">全部</span> <span class="filter-count" id="count-all">0</span></button>
+              <button class="filter-btn" data-filter="in-progress"><span data-i18n="filterReading">在读</span> <span class="filter-count" id="count-reading">0</span></button>
+              <button class="filter-btn" data-filter="finished"><span data-i18n="filterFinished">已读完</span> <span class="filter-count" id="count-finished">0</span></button>
+              <button class="filter-btn" data-filter="secret"><span data-i18n="filterSecret">私密</span> <span class="filter-count" id="count-secret">0</span></button>
             </div>
           </div>
 
@@ -294,8 +285,8 @@
     <div class="modal-container glass-card modal-large">
       <button class="close-btn" onclick="closeNotesViewerModal()"><i data-lucide="x"></i></button>
       <div class="modal-header">
-        <h2 id="notes-viewer-title">读书笔记</h2>
-        <span class="subtitle" id="notes-viewer-author">作者</span>
+        <h2 id="notes-viewer-title" data-i18n="notesTitle">读书笔记</h2>
+        <span class="subtitle" id="notes-viewer-author" data-i18n="notesAuthor">作者</span>
       </div>
       <div class="modal-body notes-list-container" id="notes-viewer-body"></div>
     </div>
@@ -306,94 +297,116 @@
     <div class="modal-container modal-medium">
       <button class="close-btn" id="close-settings-btn"><i data-lucide="x"></i></button>
       <div class="modal-header">
-        <h2>系统设置</h2>
-        <span class="subtitle">管理 API 密钥与界面主题偏好</span>
+        <h2 data-i18n="menuSettings">系统设置</h2>
+        <span class="subtitle" data-i18n="settingsThemeHint">管理 API 密钥与界面主题偏好</span>
       </div>
       <div class="modal-body settings-body-container">
         <!-- API Key Section -->
         <div class="settings-section">
-          <h3>API 密钥配置</h3>
-          <p class="section-hint">粘贴你的微信读书 API 密钥（将加密存储在浏览器本地中，安全不上传）</p>
+          <h3 data-i18n="apiKeyTitle">API 密钥配置</h3>
+          <p class="section-hint" data-i18n="apiKeyHint">粘贴你的微信读书 API 密钥（将加密存储在浏览器本地中，安全不上传）</p>
           <div class="api-key-input-wrapper">
-            <input type="password" id="settings-api-key-input" placeholder="输入 wrk-... 格式的密钥">
+            <input type="password" id="settings-api-key-input" placeholder="输入 wrk-... 格式的密钥" data-i18n-placeholder="apiKeyPlaceholder">
             <button class="icon-btn toggle-pwd-btn" id="toggle-api-key-visibility">
               <i data-lucide="eye"></i>
             </button>
+          </div>
+          <!-- How to get API Key helper -->
+          <div class="api-key-help-container">
+            <button class="help-toggle-btn" id="api-key-help-toggle">
+              <i data-lucide="help-circle"></i>
+              <span data-i18n="howToGet">如何获取密钥？</span>
+            </button>
+            <div class="help-content-box" id="api-key-help-content">
+              <p class="help-intro" data-i18n="helpIntro">只需点击下方链接进入官方页面复制 API Key，粘贴到上方即可完成配置！其他所有大盘功能已为您自动接入并搭建完毕。</p>
+              <div class="help-link-wrapper">
+                <a href="https://weread.qq.com/r/weread-skills" target="_blank" class="help-action-link">
+                  <i data-lucide="external-link"></i>
+                  <span>https://weread.qq.com/r/weread-skills</span>
+                </a>
+              </div>
+              <img src="weread-skills.png" alt="WeRead Skills API Key Copy Guide" class="help-instruction-img">
+            </div>
           </div>
         </div>
         
         <!-- Appearance Mode -->
         <div class="settings-section">
-          <h3>深浅色模式</h3>
+          <h3 data-i18n="settingsAppearance">深浅色模式</h3>
           <div class="appearance-toggles">
             <button class="mode-select-btn" data-appearance="auto">
               <i data-lucide="monitor"></i>
-              <span>跟随系统</span>
+              <span data-i18n="settingsAuto">跟随系统</span>
             </button>
             <button class="mode-select-btn" data-appearance="light">
               <i data-lucide="sun"></i>
-              <span>浅色模式</span>
+              <span data-i18n="settingsLight">浅色模式</span>
             </button>
             <button class="mode-select-btn" data-appearance="dark">
               <i data-lucide="moon"></i>
-              <span>深色模式</span>
+              <span data-i18n="settingsDark">深色模式</span>
             </button>
+          </div>
+        </div>
+
+        <!-- Language Preference -->
+        <div class="settings-section">
+          <h3 data-i18n="settingsLanguage">界面语言</h3>
+          <div class="language-toggles">
+            <button class="lang-select-btn" data-lang="zh">简体中文</button>
+            <button class="lang-select-btn" data-lang="en">English</button>
           </div>
         </div>
 
         <!-- Design Themes Section (6 themes) -->
         <div class="settings-section">
-          <h3>界面主题配色</h3>
-          <p class="section-hint">选择你喜欢的阅读主题配色</p>
+          <h3 data-i18n="settingsTheme">界面主题配色</h3>
+          <p class="section-hint" data-i18n="settingsThemeHint">选择你喜欢的阅读主题配色</p>
           <div class="theme-select-grid">
             <!-- Theme 1: Classic Warm -->
             <button class="theme-option-btn" data-theme="warm">
               <span class="theme-preview-color" style="background:#faf9f5; border:1px solid #e2e0d9;">
                 <span style="background:#1b4fc6; width:6px; height:6px; border-radius:50%; display:block;"></span>
               </span>
-              <span class="theme-option-label">温暖书香</span>
+              <span class="theme-option-label" data-i18n="warmTheme">温暖书香</span>
             </button>
             <!-- Theme 2: Vintage Newspaper -->
             <button class="theme-option-btn" data-theme="sepia">
               <span class="theme-preview-color" style="background:#f3efe0; border:1px solid #d8cfb4;">
                 <span style="background:#854d0e; width:6px; height:6px; border-radius:50%; display:block;"></span>
               </span>
-              <span class="theme-option-label">复古羊皮</span>
+              <span class="theme-option-label" data-i18n="sepiaTheme">复古羊皮</span>
             </button>
             <!-- Theme 3: Royal Library -->
             <button class="theme-option-btn" data-theme="navy">
               <span class="theme-preview-color" style="background:#fafbfe; border:1px solid #e2e8f0;">
                 <span style="background:#b45309; width:6px; height:6px; border-radius:50%; display:block;"></span>
               </span>
-              <span class="theme-option-label">皇家图书馆</span>
+              <span class="theme-option-label" data-i18n="navyTheme">皇家图书馆</span>
             </button>
             <!-- Theme 4: Nordic Forest -->
             <button class="theme-option-btn" data-theme="sage">
               <span class="theme-preview-color" style="background:#f4f7f6; border:1px solid #d1dbd7;">
                 <span style="background:#0f766e; width:6px; height:6px; border-radius:50%; display:block;"></span>
               </span>
-              <span class="theme-option-label">北欧森林</span>
+              <span class="theme-option-label" data-i18n="sageTheme">北欧森林</span>
             </button>
             <!-- Theme 5: Ebony Ink -->
             <button class="theme-option-btn" data-theme="dark">
               <span class="theme-preview-color" style="background:#121212; border:1px solid #262626;">
                 <span style="background:#3b82f6; width:6px; height:6px; border-radius:50%; display:block;"></span>
               </span>
-              <span class="theme-option-label">水墨玄青</span>
+              <span class="theme-option-label" data-i18n="darkTheme">水墨玄青</span>
             </button>
             <!-- Theme 6: Cyberpunk Minimal -->
             <button class="theme-option-btn" data-theme="cyber">
               <span class="theme-preview-color" style="background:#0b0f19; border:1px solid #1e293b;">
                 <span style="background:#ec4899; width:6px; height:6px; border-radius:50%; display:block;"></span>
               </span>
-              <span class="theme-option-label">极客霓虹</span>
+              <span class="theme-option-label" data-i18n="cyberTheme">极客霓虹</span>
             </button>
           </div>
         </div>
-      </div>
-      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:8px; border-top:1px solid var(--border-light); padding-top:16px; margin-top:16px;">
-        <button class="btn btn-secondary" id="cancel-settings-btn">取消</button>
-        <button class="btn btn-primary" id="save-settings-btn">保存设置</button>
       </div>
     </div>
   </div>
