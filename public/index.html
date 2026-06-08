@@ -2,21 +2,6 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <script>
-    (function() {
-      var host = window.location.hostname;
-      if (host !== 'localhost' && host !== '127.0.0.1' && !host.includes('rateministere.com')) {
-        var path = window.location.pathname;
-        if (path.indexOf('/wechat-read-stats') === 0) {
-          path = path.substring('/wechat-read-stats'.length);
-        }
-        if (path.indexOf('/') !== 0) {
-          path = '/' + path;
-        }
-        window.location.replace('https://www.rateministere.com/wechat-read-stats' + path + window.location.search);
-      }
-    })();
-  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WeRead — 微信读书控制台</title>
   <meta name="description" content="微信读书数据控制台：跟踪阅读统计、管理书架、回顾笔记、发现优质好书推荐。">
